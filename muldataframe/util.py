@@ -2,7 +2,7 @@ import pandas as pd
 import muldataframe.cmm as cmm
 import muldataframe as md
 
-def aggregate_index(i:int,index:pd.DataFrame,index_agg:cmm.IndexAgg):
+def aggregate_index(i:int,index:pd.DataFrame,index_agg:cmm.IndexAgg) -> pd.DataFrame:
     # agg_mode: 'same_only', 'array'
     # print(key)
     final_index = pd.Index([i])
@@ -26,8 +26,13 @@ def aggregate_index(i:int,index:pd.DataFrame,index_agg:cmm.IndexAgg):
 
 
 
-def concat(ss1,ss2):
-    ss_new = pd.concat([ss1.ss,ss2.ss])
-    index_new = pd.concat([ss1.index,ss2.index],join='inner')
-    return md.MulSeries(ss_new,index=index_new,
-                    name=ss1.name.copy())
+def concat(mds1:md.MulSeries|md.MulDataFrame,
+           mds2:md.MulSeries|md.MulDataFrame):        
+    ds_new = pd.concat([mds1.ds,mds2.ds],join='inner')
+    mindex_new = pd.concat([mds1.mindex,mds2.mindex],join='inner')
+    if isinstance(ds_new,md.MulSeries):
+        return md.MulSeries(ds_new.values,index=mindex_new,
+                    name=mds1.name.copy())
+    else:
+        return md.MulDataFrame(ds_new.values,index=mindex_new,
+                    columns=ds_new.columns.copy())

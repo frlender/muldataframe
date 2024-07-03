@@ -4,10 +4,12 @@ from warnings import warn
 from typing import Literal
 # import muldataframe.MulSeries as MulSeries
 import muldataframe as md
-
+import muldataframe.util as util
+import numpy as np
 # MulSeries = MulSeriesModule.MulSeries
 
 IndexType = Literal['index'] | Literal['columns']
+MIndexType = Literal['mindex'] | Literal['mcolumns']
 IndexInit = Literal['override'] | Literal['align']
 IndexAgg = Literal['same_only'] | Literal['array'] | Literal['tuple']
 
@@ -101,11 +103,94 @@ def setMulIndex(dx:pd.Series|pd.DataFrame,indexType:IndexType,
             checkAlign(indexType,getattr(dx,indexType).shape[0],index.shape[0])
     return dx, index
 
-def concat(ss1,ss2):
-        ss_new = pd.concat([ss1.ss,ss2.ss])
-        index_new = pd.concat([ss1.index,ss2.index],join='inner')
-        return md.MulSeries(ss_new,index=index_new,
-                        name=ss1.name.copy())
+
+def groupby(self,indexType:IndexType|MIndexType,by=None,keep_primary=False,
+            agg_mode:IndexAgg='same_only',**kwargs):
+        index_agg = agg_mode
+        if isinstance(self,md.MulSeries):
+            G = pd.core.groupby.SeriesGroupBy
+            M = md.MulSeries
+        else:
+            G = pd.core.groupby.DataFrameGroupBy
+            M = md.MulDataFrame
+        if by is None or (isinstance(by,list) and None in by) or keep_primary:
+            ms = self.loc[:]
+            if getattr(self,indexType).index.name is None:
+                for i in range(1000):
+                    name = f'primary_index' if i==0 else f'primary_index_{i}'
+                    if name not in getattr(self,indexType).columns:
+                        getattr(ms,indexType).index.name = name
+                        break
+            primary_name = getattr(ms,indexType).index.name
+            setattr(ms,indexType,getattr(ms,indexType).reset_index())
+            # ms.index = self.index.reset_index()
+            if by is None:
+                by = primary_name
+            elif isinstance(by,list) and None in by:
+                by = [primary_name if b is None else b for b in by]
+            groupBy = getattr(ms,indexType).groupby(by,**kwargs)
+            return MulGroupBy[G,M](ms,indexType,by,groupBy,index_agg)
+        else:
+            groupBy = getattr(self,indexType).groupby(by)
+            return MulGroupBy[G,M](self,indexType,by,groupBy,index_agg)
+
+
+class MulGroupBy[G,M]():
+    def __init__(self,parent,indexType:IndexType|MIndexType,
+                 by, groupBy:G, #pd.core.groupby.SeriesGroupBy,
+                 index_agg:IndexAgg):
+        self.groupBy = groupBy
+        self.parent = parent
+        self.by = by
+        self.index_agg = index_agg
+        self.indexType = indexType
+    
+    def __iter__(self):
+        if self.indexType in ['index','mindex']:
+            for k,v in self.groupBy.indices.items():
+                yield k, self.parent.iloc[v]
+        else:
+            for k,v in self.groupBy.indices.items():
+                yield k, self.parent.iloc[:,v]
+    
+    def call(self,func,*args,**kwargs):
+        res = None
+        for i,(k,gp) in enumerate(self):
+            val = gp.call(func,*args,**kwargs)
+            if isinstance(val,M): # MulSeries
+                return NotImplemented
+            index = gp.index
+            index = util.aggregate_index(i,index,self.index_agg)
+            if isinstance(self,md.MulDataFrame) and \
+                isinstance(val,md.MulSeries):
+                ms = M([val.values],index=index,
+                       columns=val.columns.copy())
+            else:
+                if isinstance(self.parent,md.MulSeries):
+                    name = self.parent.name.copy()
+                else:
+                    name = func.__name__
+                ms = M([val],index=index,
+                            name=name)
+            if i == 0:
+                res = ms
+            else:
+                res = util.concat(res,ms)
+        return res
+
+
+# funcs = ['mean','median','std','var','sum','prod','count','first','last','mad']
+funcs = ['mean','median','std','var','sum','prod']
+for func_name in funcs:
+    def call_func_factory(func_name):
+        def call_func(self,*args,**kwargs):
+            func = getattr(np,func_name)
+            # print(op_attr,func)
+            return self.call(func,*args,**kwargs)
+        return call_func
+    setattr(MulGroupBy,func_name,call_func_factory(func_name))
+
+
 # def concat(ss1:MulSeries,ss2:MulSeries):
 #     ss_new = ss1.ss.concat(ss2.ss)
 #     index_new = pd.concat([ss1.index,ss2.index],join='inner')

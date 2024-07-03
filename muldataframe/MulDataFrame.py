@@ -3,7 +3,7 @@ import muldataframe as md
 from typing import Any
 import muldataframe.cmm as cmm
 import muldataframe.ValFrameBase as vfb
-
+# import muldataframe.util as util
 
 class MulDataFrame:
     def __init__(self, data, index=None, columns=None,
@@ -49,6 +49,8 @@ class MulDataFrame:
                              self._xloc_set_factory('iloc'),2)
         self.loc = cmm.Accessor(self._xloc_get_factory('loc'),
                              self._xloc_set_factory('loc'),2)
+        self.mloc = cmm.Accessor(self._mloc_get,
+                             self._mloc_set,2)
         
     
     def __repr__(self):
@@ -58,7 +60,7 @@ class MulDataFrame:
     
     def __getattr__(self,name):
         if name == 'values':
-            return self.__ss.values
+            return self.__df.values
         elif name == 'df':
             return pd.DataFrame(self.__df.copy().values,
                              index=self.index.index.copy(),
@@ -67,6 +69,12 @@ class MulDataFrame:
             return getattr(self,name.lstrip('m'))
         elif name == 'shape':
             return self.__df.shape
+        elif name == 'ds':
+            # values are not copied version
+            return pd.DataFrame(self.values,
+                             index=self.index.index.copy(),
+                             columns=self.columns.index.copy(),
+                             copy=False)
         
     def __setattr__(self, name: str, value: Any) -> None:
         if name in ['mindex','mcolumns']:
@@ -110,15 +118,40 @@ class MulDataFrame:
                 return new_df
         return _xloc_get
     
+    def _get_indices(self,key):
+        if isinstance(key,tuple):
+                idx,col = key
+        else:
+            idx = key
+            col = slice(None)
+        return idx, col
+
     def _xloc_set_factory(self,attr):
         def _xloc_set(self,key,values):
-            if isinstance(key,tuple):
-                idx,col = key
-            else:
-                idx = key
-                col = slice(None)
+            idx, col = self._get_indices(key)
             getattr(self.__df,attr)[idx,col] = values
         return _xloc_set
+    
+    def _mloc(self,key):
+        idx, col = self._get_indices(key)
+        if idx == slice(None):
+            nx_idx = idx
+        else:
+            nx_idx = cmm._mloc_idx(idx,self.mindex)
+        if col == slice(None):
+            nx_col = col
+        else:
+            nx_col = cmm._mloc_idx(col,self.mcolumns)
+        return nx_idx, nx_col
+    
+    def _mloc_get(self,key):
+        nx_idx, nx_col = self._mloc(key)
+        return self.iloc[nx_idx,nx_col]
+    
+    def _mloc_set(self,key,value):
+        nx_idx, nx_col = self._mloc(key)
+        self.iloc[nx_idx,nx_col] = value
+
     
     @classmethod
     def _mloc_to_primary(cls,key,mindex):
@@ -160,16 +193,17 @@ class MulDataFrame:
         # self.__df.index = self.__df.index
         # self.__df.columns = self.__df.columns
         bidx = self.__df.duplicated(subset=subset,keep=keep)
-        new_df = self.__df.loc[~bidx]
+        bidx_keep = ~bidx
+        new_df = self.__df.loc[bidx_keep]
 
         if inplace:
             # primary_index = self.index.index
             # primary_columns = self.columns.index
-            self.index = self.index.loc[~bidx]
+            self.index = self.index.loc[bidx_keep]
             self.__df = ValDataFrame(self,new_df)
         else:
             return MulDataFrame(new_df.values,
-                        index=self.index.loc[~bidx],
+                        index=self.index.loc[bidx_keep],
                         columns=self.columns.copy())
     
     def iterrows(self):
@@ -178,6 +212,7 @@ class MulDataFrame:
     
     def call(self,func,*args,**kwargs):
         new_df = func(self.__df,*args,**kwargs)
+        func_name = func.__name__
         if isinstance(new_df,pd.DataFrame):
             if new_df.index.equals(self.mindex.index) and \
                 new_df.columns.equals(self.mcolumns.index):
@@ -189,23 +224,27 @@ class MulDataFrame:
         elif isinstance(new_df,pd.Series):
             if new_df.index.equals(self.mindex.index) and \
                 not new_df.columns.equals(self.mcolumns.index):
-                return md.MulSeries(new_df.values,index=self.mindex.copy())
+                return md.MulSeries(new_df.values,index=self.mindex.copy(),name=func_name)
             elif new_df.columns.equals(self.mcolumns.index) and \
                 not new_df.index.equals(self.mindex.index):
-                return md.MulSeries(new_df.values,index=self.mcolumns.copy())
+                return md.MulSeries(new_df.values,index=self.mcolumns.copy(),name=func_name)
             elif new_df.index.equals(self.mindex.index) and \
                 ('axis' in kwargs and kwargs['axis'] == 1):
-                return md.MulSeries(new_df.values,index=self.mindex.copy())
+                return md.MulSeries(new_df.values,index=self.mindex.copy(),name=func_name)
             elif new_df.columns.equals(self.mcolumns.index) and \
                 ('axis' in kwargs and kwargs['axis'] == 0):
-                return md.MulSeries(new_df.values,index=self.mcolumns.copy())
+                return md.MulSeries(new_df.values,index=self.mcolumns.copy(),name=func_name)
             else:
                 return NotImplemented
         else:
             return new_df
         
-    def groupby(self):
-        pass
+    def groupby(self,by=None,axis=0,agg_mode:cmm.IndexAgg='same_only',
+                keep_primary=False,sort=True):
+        indexType = 'index' if axis == 0 else 'columns'
+        return cmm.groupby(self,indexType,by=by,
+                           keep_primary=keep_primary,agg_mode=agg_mode,
+                           sort=sort)
 
 ops = ['add','sub','mul','div','truediv','floordiv','mod','pow']
 for op in ops:
@@ -218,8 +257,18 @@ for op in ops:
         return call_op
     setattr(MulDataFrame,op_attr,call_op_factory(op_attr))
 
-class ValDataFrame(pd.DataFrame,metaclass=vfb.ValFrameBaseMeta):
-    pass
+ValDataFrame = vfb.ValFrameBase_factory(pd.DataFrame)
+
+# class MulDataFrameGroupby[G,M](cmm.MulGroupBy):
+#     def call(self,func,*args,**kwargs):
+#         res = None
+#         for i,(k,gp) in enumerate(self):
+#             val = gp.call(func,*args,**kwargs)
+#             if isinstance(val,M):
+#                 return NotImplemented
+#             index = util.aggregate_index(i,gp.index,self.index_agg)
+
+
 
 # class ValDataFrame(pd.DataFrame):
     # def __init__(self,parent:MulDataFrame,df:pd.DataFrame):

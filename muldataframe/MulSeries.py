@@ -1,10 +1,10 @@
 import pandas as pd
 import muldataframe.cmm as cmm
-import muldataframe.util as util
+# import muldataframe.util as util
 from typing import Any
 import numpy as np
 # import muldataframe.ValFrameBase as vfb
-import muldataframe.ValFrameBase2 as vfb
+import muldataframe.ValFrameBase as vfb
 
 
 
@@ -57,6 +57,12 @@ class MulSeries:
             return getattr(self,name.lstrip('m'))
         elif name == 'shape':
             return self.__ss.shape
+        elif name == 'ds':
+            # values are not copied version
+            return pd.Series(self.values,
+                             index=self.index.index.copy(),
+                             name=self.name.name,
+                             copy=False)
         
 
     def __setattr__(self, name: str, value: Any) -> None:
@@ -150,26 +156,28 @@ class MulSeries:
             return res
 
     def groupby(self,by=None,keep_primary=False,agg_mode:cmm.IndexAgg='same_only'):
-        index_agg = agg_mode
-        if by is None or (isinstance(by,list) and None in by) or keep_primary:
-            ms = self.loc[:]
-            if self.index.index.name is None:
-                for i in range(1000):
-                    name = f'primary_index' if i==0 else f'primary_index_{i}'
-                    if name not in self.index.columns:
-                        ms.index.index.name = name
-                        break
-            primary_name = ms.index.index.name
-            ms.index = self.index.reset_index()
-            if by is None:
-                by = primary_name
-            elif isinstance(by,list) and None in by:
-                by = [primary_name if b is None else b for b in by]
-            groupBy = ms.index.groupby(by)
-            return MulSeriesGroupBy(ms,by,groupBy,index_agg)
-        else:
-            groupBy = self.index.groupby(by)
-            return MulSeriesGroupBy(self,by,groupBy,index_agg)
+        return cmm.groupby(self,'index',by=by,
+                           keep_primary=keep_primary,agg_mode=agg_mode)
+        # index_agg = agg_mode
+        # if by is None or (isinstance(by,list) and None in by) or keep_primary:
+        #     ms = self.loc[:]
+        #     if self.index.index.name is None:
+        #         for i in range(1000):
+        #             name = f'primary_index' if i==0 else f'primary_index_{i}'
+        #             if name not in self.index.columns:
+        #                 ms.index.index.name = name
+        #                 break
+        #     primary_name = ms.index.index.name
+        #     ms.index = self.index.reset_index()
+        #     if by is None:
+        #         by = primary_name
+        #     elif isinstance(by,list) and None in by:
+        #         by = [primary_name if b is None else b for b in by]
+        #     groupBy = ms.index.groupby(by)
+        #     return MulSeriesGroupBy(ms,by,groupBy,index_agg)
+        # else:
+        #     groupBy = self.index.groupby(by)
+        #     return MulSeriesGroupBy(self,by,groupBy,index_agg)
 
 ops = ['add','sub','mul','div','truediv','floordiv','mod','pow']
 for op in ops:
@@ -182,46 +190,48 @@ for op in ops:
         return call_op
     setattr(MulSeries,op_attr,call_op_factory(op_attr))
 
-class MulSeriesGroupBy():
-    def __init__(self,parent:MulSeries,by,
-                 groupBy:pd.core.groupby.SeriesGroupBy,
-                 index_agg):
-        self.groupBy = groupBy
-        self.parent = parent
-        self.by = by
-        self.index_agg = index_agg
+
+
+# class MulSeriesGroupBy():
+#     def __init__(self,parent:MulSeries,by,
+#                  groupBy:pd.core.groupby.SeriesGroupBy,
+#                  index_agg):
+#         self.groupBy = groupBy
+#         self.parent = parent
+#         self.by = by
+#         self.index_agg = index_agg
     
-    def __iter__(self):
-        for k,v in self.groupBy.indices.items():
-            yield k, self.parent.iloc[v]
+#     def __iter__(self):
+#         for k,v in self.groupBy.indices.items():
+#             yield k, self.parent.iloc[v]
     
-    def call(self,func,*args,**kwargs):
-        res = None
-        for i,(k,gp) in enumerate(self):
-            val = gp.call(func,*args,**kwargs)
-            if isinstance(val,MulSeries):
-                return NotImplemented
-            index = gp.index
-            index = util.aggregate_index(i,index,self.index_agg)
-            ms = MulSeries([val],index=index,
-                           name=self.parent.name.copy())
-            if i == 0:
-                res = ms
-            else:
-                res = util.concat(res,ms)
-        return res
+#     def call(self,func,*args,**kwargs):
+#         res = None
+#         for i,(k,gp) in enumerate(self):
+#             val = gp.call(func,*args,**kwargs)
+#             if isinstance(val,MulSeries):
+#                 return NotImplemented
+#             index = gp.index
+#             index = util.aggregate_index(i,index,self.index_agg)
+#             ms = MulSeries([val],index=index,
+#                            name=self.parent.name.copy())
+#             if i == 0:
+#                 res = ms
+#             else:
+#                 res = util.concat(res,ms)
+#         return res
 
 
 # funcs = ['mean','median','std','var','sum','prod','count','first','last','mad']
-funcs = ['mean','median','std','var','sum','prod']
-for func_name in funcs:
-    def call_func_factory(func_name):
-        def call_func(self,*args,**kwargs):
-            func = getattr(np,func_name)
-            # print(op_attr,func)
-            return self.call(func,*args,**kwargs)
-        return call_func
-    setattr(MulSeriesGroupBy,func_name,call_func_factory(func_name))
+# funcs = ['mean','median','std','var','sum','prod']
+# for func_name in funcs:
+#     def call_func_factory(func_name):
+#         def call_func(self,*args,**kwargs):
+#             func = getattr(np,func_name)
+#             # print(op_attr,func)
+#             return self.call(func,*args,**kwargs)
+#         return call_func
+#     setattr(MulSeriesGroupBy,func_name,call_func_factory(func_name))
 
 
 ValSeries = vfb.ValFrameBase_factory(pd.Series)
