@@ -1,11 +1,12 @@
 
 import pandas as pd
 from warnings import warn
-from typing import Literal
+from typing import Literal, TypeVar, Generic
 # import muldataframe.MulSeries as MulSeries
 import muldataframe as md
-import muldataframe.util as util
+# import muldataframe.util as util
 import numpy as np
+
 # MulSeries = MulSeriesModule.MulSeries
 
 IndexType = Literal['index'] | Literal['columns']
@@ -134,8 +135,10 @@ def groupby(self,indexType:IndexType|MIndexType,by=None,keep_primary=False,
             groupBy = getattr(self,indexType).groupby(by)
             return MulGroupBy[G,M](self,indexType,by,groupBy,index_agg)
 
+G = TypeVar('G')
+M = TypeVar('M')
 
-class MulGroupBy[G,M]():
+class MulGroupBy(Generic[G,M]):
     def __init__(self,parent,indexType:IndexType|MIndexType,
                  by, groupBy:G, #pd.core.groupby.SeriesGroupBy,
                  index_agg:IndexAgg):
@@ -160,7 +163,7 @@ class MulGroupBy[G,M]():
             if isinstance(val,M): # MulSeries
                 return NotImplemented
             index = gp.index
-            index = util.aggregate_index(i,index,self.index_agg)
+            index = md.aggregate_index(i,index,self.index_agg)
             if isinstance(self,md.MulDataFrame) and \
                 isinstance(val,md.MulSeries):
                 ms = M([val.values],index=index,
@@ -175,7 +178,7 @@ class MulGroupBy[G,M]():
             if i == 0:
                 res = ms
             else:
-                res = util.concat(res,ms)
+                res = md.concat(res,ms)
         return res
 
 

@@ -7,9 +7,6 @@ import numpy as np
 import muldataframe.ValFrameBase as vfb
 
 
-
-
-
 class MulSeries:
     def __init__(self,ss,index:pd.DataFrame=None,
                  name:pd.Series|str=None,
@@ -83,8 +80,12 @@ class MulSeries:
         if not isinstance(other,MulSeries):
             return False
         else:
-            return self.ss.equals(other.ss) and self.index.equals(other.index) and self.name.equals(other.name)
+            return self.ds.equals(other.ds) and self.index.equals(other.index) and self.name.equals(other.name)
 
+    def copy(self):
+        return MulSeries(self.__ss.copy().values,
+                         index=self.index.copy(),
+                         name=self.name.copy())
     
     def _xloc_get_factory(self,attr):
         def _xloc_get(key):

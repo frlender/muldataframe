@@ -1,6 +1,8 @@
 import pandas as pd
 import muldataframe.cmm as cmm
 import muldataframe as md
+# import muldataframe.cmm as cmm
+
 
 def aggregate_index(i:int,index:pd.DataFrame,index_agg:cmm.IndexAgg) -> pd.DataFrame:
     # agg_mode: 'same_only', 'array'
@@ -23,7 +25,6 @@ def aggregate_index(i:int,index:pd.DataFrame,index_agg:cmm.IndexAgg) -> pd.DataF
                 vals = tuple(vals) if index_agg == 'tuple' else vals
                 index_vals.append(vals)
         return pd.DataFrame([index_vals],columns=index.columns,index=final_index)
-
 
 
 def concat(mds1:md.MulSeries|md.MulDataFrame,

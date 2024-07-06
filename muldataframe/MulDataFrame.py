@@ -82,7 +82,18 @@ class MulDataFrame:
         else:
             super().__setattr__(name, value)
 
-        
+    
+    def __eq__(self,other):
+        return self.equals(other)
+    
+    def equals(self,other):
+        if not isinstance(other,MulDataFrame):
+            return False
+        else:
+            return self.ds.equals(other.ds) and \
+                self.index.equals(other.index) and \
+                self.columns.equals(other.columns)
+
     def copy(self):
         return MulDataFrame(self.__df.copy().values,
                              index=self.index.copy(),

@@ -1,9 +1,10 @@
 # import muldataframe as md
-from muldataframe import MulSeries
+# from muldataframe import MulSeries
 
-print(MulSeries)
+# print(MulSeries)
 
 # from circular.b import b
 
 import circular.a
-print(circular.a.A)
+import circular.b as cb
+print(circular.a.A,cb.b,cb.z)

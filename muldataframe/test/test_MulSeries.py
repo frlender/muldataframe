@@ -4,6 +4,59 @@ import pandas as pd
 from .lib import eq
 import pytest
 
+def test_init():
+    index = pd.DataFrame([['a','b'],['c','d']])
+    with pytest.raises(IndexError):
+        MulSeries([1,2,3],index=index)
+    
+    index = pd.DataFrame([['a','b'],['c','d']],
+                         index=['e','f'])
+    assert eq(MulSeries(pd.Series([1,2],index=['f','e']),
+                        index=index).values,[2,1])
+    assert eq(MulSeries({'f':1,'e':2},index=index).values,[2,1])
+    assert eq(MulSeries({'f':1,'e':2,'g':3},index=index).values,[2,1])
+
+    with pytest.raises(IndexError):
+        MulSeries(pd.Series([1,2,3],index=['f','e','f']),
+                        index=index)
+    
+    index = pd.DataFrame([['a','b'],['c','d'],
+                          ['g','h']],
+                         index=['e','f','f'])
+    assert eq(MulSeries({'f':1,'e':2},index=index).values,[2,1,1])
+
+def test_getattr():
+    index = pd.DataFrame([['a','b'],['c','d']],
+                         index=['e','f'])
+    ms = MulSeries(pd.Series([1,2],index=['e','f']), 
+                        index=index)
+
+    ss = ms.ss
+    ss.index = ['k','l']
+    assert eq(ms.index.index.values,['e','f'])
+    ss.iloc[0] = 5
+    assert ms.iloc[0] == 1
+
+    ss = ms.ds
+    ss.index = ['k','l']
+    assert eq(ms.index.index.values,['e','f'])
+    ss.iloc[0] = 5
+    assert ms.iloc[0] == 5
+    
+
+def test_attr():
+    index = pd.DataFrame([['a','b'],['c','d'],
+                          ['g','h']],
+                         index=['e','f','f'])
+    ms = MulSeries({'f':1,'e':2},index=index)
+    ss = ms.ss
+    ss.index = ['a','b','c']
+    assert not eq(ms.index.index.values,
+                  ss.index.values)
+    ss.iloc[0] = 5
+    assert ss.iloc
+
+
 def test_loc():
     index = pd.DataFrame([['a','b','c'],
                         [ 'g','b','f'],
