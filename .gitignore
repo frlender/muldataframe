@@ -1,5 +1,6 @@
 __pycache__/
 muldataframe/__pycache__/
+muldataframe/test/__pycache__
 .pytest_cache/
 circular/
 **/__pycache__/
