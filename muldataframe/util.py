@@ -31,9 +31,27 @@ def concat(mds1:md.MulSeries|md.MulDataFrame,
            mds2:md.MulSeries|md.MulDataFrame):        
     ds_new = pd.concat([mds1.ds,mds2.ds],join='inner')
     mindex_new = pd.concat([mds1.mindex,mds2.mindex],join='inner')
-    if isinstance(ds_new,md.MulSeries):
+    # print('ddddddd',mds1.ds,mds2.ds,ds_new)
+    if isinstance(ds_new,pd.Series):
         return md.MulSeries(ds_new.values,index=mindex_new,
                     name=mds1.name.copy())
     else:
         return md.MulDataFrame(ds_new.values,index=mindex_new,
                     columns=ds_new.columns.copy())
+    
+
+def pivot_table(*args,**kwargs):
+    df = pd.pivot_table(*args,**kwargs)
+    if isinstance(df.index,pd.MultiIndex):
+        new_idx = df.index.to_frame(index=False)
+    else:
+        new_idx = None
+    if isinstance(df.columns,pd.MultiIndex):
+        new_cols = df.columns.to_frame(index=False)
+    else:
+        new_cols = None
+    
+    return md.MulDataFrame(df.values,
+                           index=new_idx,
+                           columns=new_cols,
+                           both_copy=False)

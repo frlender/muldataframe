@@ -3,20 +3,29 @@ import muldataframe.cmm as cmm
 # import muldataframe.util as util
 from typing import Any
 import numpy as np
+import muldataframe as md
 # import muldataframe.ValFrameBase as vfb
 import muldataframe.ValFrameBase as vfb
 
+#TODO: query for mulseries and muldataframe
+
 
 class MulSeries:
+    # force pandas to return NotImplemented when using ops like +, * 
+    # in the case of pd.Series + MulSeries.
+    __pandas_priority__ = 10000
     def __init__(self,ss,index:pd.DataFrame=None,
                  name:pd.Series|str=None,
-                 index_init:cmm.IndexInit=None):
+                 index_init:cmm.IndexInit=None,
+                 index_copy=True,name_copy=True):
         
         if isinstance(ss,dict):
             ss = pd.Series(ss)
 
         if not isinstance(name,pd.Series):
             name = pd.Series([],name=name)
+        else:
+            name = name.copy() if name_copy else name
 
         if isinstance(ss,pd.Series):
             index_init = 'align' if index_init is None else index_init
@@ -24,7 +33,7 @@ class MulSeries:
             index_init = 'override' if index_init is None else index_init
             ss = pd.Series(ss)
 
-        ss, index = cmm.setMulIndex(ss,'index',index,index_init)
+        ss, index = cmm.setMulIndex(ss,'index',index,index_init,index_copy)
 
         self.index = index
         self.name = name
@@ -47,7 +56,7 @@ class MulSeries:
         if name == 'values':
             return self.__ss.values
         elif name == 'ss':
-            return pd.Series(self.values[:],
+            return pd.Series(self.values.copy(),
                              index=self.index.index.copy(),
                              name=self.name.name)
         elif name in ['mindex','mname']:
@@ -61,17 +70,18 @@ class MulSeries:
                              name=self.name.name,
                              copy=False)
         
+    def _hasVal(self):
+        return self.__ss is not None
 
     def __setattr__(self, name: str, value: Any) -> None:
         if name == 'ss':
             raise AttributeError(f"ss is a read-only attribute.")
-        if name == 'index':
-            if self.__ss is not None:
-                if value.shape[0] != self.__ss.shape[0]:
-                    raise IndexError(f"index shape {value.shape[0]} is not consistent with series shape {self.__ss.shape[0]}.")
+        if name in ['index','mindex','midx']:
+            cmm.checkSetIdxValue(self,'index',value)
             super().__setattr__(name, value)
         else:
             super().__setattr__(name, value)
+
     
     def __eq__(self,other):
         return self.equals(other)
@@ -84,21 +94,34 @@ class MulSeries:
 
     def copy(self):
         return MulSeries(self.__ss.copy().values,
-                         index=self.index.copy(),
+                         index=self.index,
                          name=self.name.copy())
+    
+    def __getitem__(self,key):
+        new_ss = self.__ss[key]
+        if(isinstance(new_ss,pd.Series)):
+            idx_new = self.mindex.loc[key]
+                # print('ok')
+            ms = MulSeries(new_ss,
+                                index=idx_new,
+                                name=self.name,
+                                index_init='override')
+            return ms
+        else:
+            return new_ss
+    
+    def __setitem__(self,key, values):
+        self.__ss[key] = values
     
     def _xloc_get_factory(self,attr):
         def _xloc_get(key):
             new_ss = getattr(self.__ss,attr)[key]
-            # print(new_ss)
             if(isinstance(new_ss,pd.Series)):
                 idx_new = getattr(self.mindex,attr)[key]
-                # print('ok')
                 ms = MulSeries(new_ss,
                                     index=idx_new,
-                                    name=self.name.name,
+                                    name=self.name,
                                     index_init='override')
-                # print(ms,'dddd')
                 return ms
             else:
                 return new_ss
@@ -110,18 +133,22 @@ class MulSeries:
         return _xloc_set
 
     def _mloc(self,key):
-        if key == slice(None):
-            return self.iloc[:]
         nx = cmm._mloc_idx(key,self.index)
         return nx
     
     def _mloc_get(self,key):
-        nx = self._mloc(key)
-        return self.iloc[nx]
+        if key == slice(None):
+            return self.iloc[:]
+        else:
+            nx = self._mloc(key)
+            return self.iloc[nx]
     
     def _mloc_set(self,key,values):
-        nx = self._mloc(key)
-        self.iloc[nx] = values
+        if key == slice(None):
+            self.iloc[:] = values
+        else:
+            nx = self._mloc(key)
+            self.iloc[nx] = values
 
     # def __add__(self,other):
     #     return self.call(pd.Series.__add__,other)
@@ -129,56 +156,79 @@ class MulSeries:
     def call(self,func,*args,**kwargs):
         # if 'unsafe' in kwargs and kwargs['unsafe']:
         # consider to change to self.ss to improve safety?
+        args = list(args)
+        if len(args) > 0 and (isinstance(args[0],MulSeries) or \
+            isinstance(args[0],md.MulDataFrame)):
+            args[0] = args[0].ds
+        if len(args) > 0 and hasattr(md,'__pandas_priority__') \
+            and args[0].__pandas_priority__ > self.__pandas_priority__:
+            return NotImplemented
+        # print(func,self,args)
+        self.__ss._update_super_index()
         res = func(self.__ss,*args,**kwargs)
+        errMsg = f'Currently, {self.__class__} only supports operators or functions that return a scalar value or a pandas series with the same primary index (order can be different if there are no duplicate values) in its .call() method.'
         # else:
         #     res = func(self.ss,*args,**kwargs)
         # print(res)
         if isinstance(res,pd.DataFrame):
             # print('dataframe',res)
-            return NotImplemented
+            # have to raise error here because pandas does not support muldataframe in its __radd__ like functions.
+            raise NotImplementedError(errMsg)
+            # return NotImplemented
         elif isinstance(res,pd.Series):
-            try:
-                res = res.loc[self.index.index]
-            except:
-                return NotImplemented
             if res.shape[0] == self.shape[0]:
-                if res.name == self.name.name:
-                    name = self.name.copy()
+                if not res.index.equals(self.index.index):
+                    try:
+                        # res2 = self.loc[res.index]
+                        new_idx = cmm.align_index_in_call(res,self,
+                                                          'index')
+                        if new_idx.shape[0] == self.shape[0]:
+                            return MulSeries(res.values,
+                                             index=new_idx,
+                                             name=self.name,
+                                             index_copy=False)
+                        # if res2.shape[0] == self.shape[0]:
+                        #     return res2
+                        else:
+                            raise NotImplementedError(errMsg)
+                    except:
+                        raise NotImplementedError(errMsg)
                 else:
-                    name = pd.Series([],name=res.name)
-                return MulSeries(res,
-                                index=self.index.copy(),
-                                name=name,
-                                index_init='override')
+                    if res.name == self.name.name:
+                        name = self.name.copy()
+                    else:
+                        name = pd.Series([],name=res.name)
+                    return MulSeries(res,
+                                    index=self.index,
+                                    name=name,
+                                    index_init='override')
             else:
                 # print('shape',res.shape,self.shape)
-                return NotImplemented
+                raise NotImplementedError(errMsg)
         else:
             return res
 
     def groupby(self,by=None,keep_primary=False,agg_mode:cmm.IndexAgg='same_only'):
         return cmm.groupby(self,'index',by=by,
                            keep_primary=keep_primary,agg_mode=agg_mode)
-        # index_agg = agg_mode
-        # if by is None or (isinstance(by,list) and None in by) or keep_primary:
-        #     ms = self.loc[:]
-        #     if self.index.index.name is None:
-        #         for i in range(1000):
-        #             name = f'primary_index' if i==0 else f'primary_index_{i}'
-        #             if name not in self.index.columns:
-        #                 ms.index.index.name = name
-        #                 break
-        #     primary_name = ms.index.index.name
-        #     ms.index = self.index.reset_index()
-        #     if by is None:
-        #         by = primary_name
-        #     elif isinstance(by,list) and None in by:
-        #         by = [primary_name if b is None else b for b in by]
-        #     groupBy = ms.index.groupby(by)
-        #     return MulSeriesGroupBy(ms,by,groupBy,index_agg)
-        # else:
-        #     groupBy = self.index.groupby(by)
-        #     return MulSeriesGroupBy(self,by,groupBy,index_agg)
+    
+    
+    def drop_duplicates(self,keep='first', inplace=False):
+        bidx = self.__ss.duplicated(keep=keep)
+        bidx_keep = ~bidx
+        new_ss = self.__ss.loc[bidx]
+
+        if inplace:
+            # primary_index = self.index.index
+            # primary_columns = self.columns.index
+            self.index = self.index.loc[bidx_keep]
+            self.__ss = ValSeries(self,new_ss)
+        else:
+            return MulSeries(new_ss.values,
+                        index=self.index.loc[bidx_keep],
+                        name=self.name)
+
+
 
 ops = ['add','sub','mul','div','truediv','floordiv','mod','pow']
 for op in ops:
@@ -190,49 +240,9 @@ for op in ops:
             return self.call(func,other)
         return call_op
     setattr(MulSeries,op_attr,call_op_factory(op_attr))
+    r_op_attr = '__r'+op+'__'
+    setattr(MulSeries,r_op_attr,call_op_factory(r_op_attr))
 
-
-
-# class MulSeriesGroupBy():
-#     def __init__(self,parent:MulSeries,by,
-#                  groupBy:pd.core.groupby.SeriesGroupBy,
-#                  index_agg):
-#         self.groupBy = groupBy
-#         self.parent = parent
-#         self.by = by
-#         self.index_agg = index_agg
-    
-#     def __iter__(self):
-#         for k,v in self.groupBy.indices.items():
-#             yield k, self.parent.iloc[v]
-    
-#     def call(self,func,*args,**kwargs):
-#         res = None
-#         for i,(k,gp) in enumerate(self):
-#             val = gp.call(func,*args,**kwargs)
-#             if isinstance(val,MulSeries):
-#                 return NotImplemented
-#             index = gp.index
-#             index = util.aggregate_index(i,index,self.index_agg)
-#             ms = MulSeries([val],index=index,
-#                            name=self.parent.name.copy())
-#             if i == 0:
-#                 res = ms
-#             else:
-#                 res = util.concat(res,ms)
-#         return res
-
-
-# funcs = ['mean','median','std','var','sum','prod','count','first','last','mad']
-# funcs = ['mean','median','std','var','sum','prod']
-# for func_name in funcs:
-#     def call_func_factory(func_name):
-#         def call_func(self,*args,**kwargs):
-#             func = getattr(np,func_name)
-#             # print(op_attr,func)
-#             return self.call(func,*args,**kwargs)
-#         return call_func
-#     setattr(MulSeriesGroupBy,func_name,call_func_factory(func_name))
 
 
 ValSeries = vfb.ValFrameBase_factory(pd.Series)
@@ -241,35 +251,3 @@ def _update_super_index(self):
     self.name = self.parent.name.name
 ValSeries._update_super_index = _update_super_index
 
-# class ValSeries(pd.Series,metaclass=vfb.ValFrameBaseMeta):
-#     def _update_super_index(self):
-#         self.index = self.parent.mindex.index
-#         self.name = self.parent.name.name
-
-
-# class ValSeries(pd.Series):
-#     def __init__(self,parent:MulSeries,ss):
-#         super().__init__(ss)
-#         self.parent = parent
-
-#     def __getattribute__(self, name:str):
-#         if name == 'index':
-#             # print(super().__getattribute__('index'),
-#             #       super().__getattribute__('parent').index.index)
-#             return super().__getattribute__('parent').index.index
-#         elif name == 'name':
-#             return super().__getattribute__('parent').name.name
-#         else:
-#             return super().__getattribute__(name)
-   
-
-# ops = ['add','sub','mul','div','truediv','floordiv','mod','pow']
-# for op in ops:
-#     op_attr = '__'+op+'__'
-#     def call_op_factory(op_attr):
-#         def call_op(self,other):
-#             func = getattr(pd.Series,op_attr)
-#             # print(op_attr,func)
-#             return self.call(func,other)
-#         return call_op
-#     setattr(MulSeries,op_attr,call_op_factory(op_attr))

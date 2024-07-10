@@ -88,21 +88,48 @@ def checkOverride(label,ss_shape,index_shape):
 
 
 def setMulIndex(dx:pd.Series|pd.DataFrame,indexType:IndexType,
-                index:pd.DataFrame|None, index_init:IndexInit):
+                index:pd.DataFrame|None, index_init:IndexInit,
+                index_copy:bool):
     if index is None:
         index = pd.DataFrame([],index=getattr(dx,indexType))
     else:
+        if index_copy:
+            index = index.copy()
         if index_init == 'override':
             checkOverride(indexType,getattr(dx,indexType).shape[0],
                           index.shape[0])
             # setattr(dx,indexType,index.index)
         else:
-            if indexType == 'index':
-                dx = dx.loc[index.index]
-            else:
-                dx = dx.loc[:,index.index]
-            checkAlign(indexType,getattr(dx,indexType).shape[0],index.shape[0])
+            # print(index,getattr(dx,indexType))
+            if not index.index.equals(getattr(dx,indexType)):
+                if indexType == 'index':
+                    dx = dx.loc[index.index]
+                else:
+                    dx = dx.loc[:,index.index]
+                checkAlign(indexType,getattr(dx,indexType).shape[0],index.shape[0])
     return dx, index
+
+
+def checkSetIdxValue(self,name,value):
+    className = self.__class__.__name__
+    shapeIdx = 0 if name == 'index' else 1
+    if not self._hasVal():
+            return
+    if not isinstance(value,pd.DataFrame) or \
+        value.shape[0] != self.shape[shapeIdx]:
+        raise IndexError(f"The assigned value must be a dataframe with its index length being the same as the {className}'s {name} length.")
+
+def align_index_in_call(new_ds:pd.DataFrame|pd.Series,
+                        self,
+                        indexType:IndexType):
+    try:
+        new_idx = getattr(self,indexType).loc[getattr(new_ds,indexType)]
+        if new_idx.shape[0] == getattr(self,indexType).shape[0]:
+            return new_idx
+        else:
+            raise NotImplementedError
+    except:
+        raise NotImplementedError
 
 
 def groupby(self,indexType:IndexType|MIndexType,by=None,keep_primary=False,
@@ -157,28 +184,42 @@ class MulGroupBy(Generic[G,M]):
                 yield k, self.parent.iloc[:,v]
     
     def call(self,func,*args,**kwargs):
+        # print('******',G,M,type(G),)
+        G_class, M_class = self.__orig_class__.__args__
         res = None
+        use_mul = False
+        if 'use_mul' in kwargs:
+            use_mul = kwargs['use_mul']
+            del kwargs['use_mul']
         for i,(k,gp) in enumerate(self):
-            val = gp.call(func,*args,**kwargs)
-            if isinstance(val,M): # MulSeries
-                return NotImplemented
-            index = gp.index
-            index = md.aggregate_index(i,index,self.index_agg)
-            if isinstance(self,md.MulDataFrame) and \
-                isinstance(val,md.MulSeries):
-                ms = M([val.values],index=index,
-                       columns=val.columns.copy())
+            if use_mul:
+                val = func(gp,*args,**kwargs)
             else:
-                if isinstance(self.parent,md.MulSeries):
-                    name = self.parent.name.copy()
+                val = gp.call(func,*args,**kwargs)
+            if isinstance(val,M_class): # MulSeries
+                if i == 0:
+                    res = val
                 else:
-                    name = func.__name__
-                ms = M([val],index=index,
-                            name=name)
-            if i == 0:
-                res = ms
+                    res = md.concat(res,val)
+                # return NotImplemented
             else:
-                res = md.concat(res,ms)
+                index = gp.index
+                index = md.aggregate_index(i,index,self.index_agg)
+                if isinstance(self,md.MulDataFrame) and \
+                    isinstance(val,md.MulSeries):
+                    ms = M_class([val.values],index=index,
+                        columns=val.columns.copy())
+                else:
+                    if isinstance(self.parent,md.MulSeries):
+                        name = self.parent.name.copy()
+                    else:
+                        name = func.__name__
+                    ms = M_class([val],index=index,
+                                name=name)
+                if i == 0:
+                    res = ms
+                else:
+                    res = md.concat(res,ms)
         return res
 
 

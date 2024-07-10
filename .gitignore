@@ -3,3 +3,4 @@ muldataframe/__pycache__/
 .pytest_cache/
 circular/
 **/__pycache__/
+.coverage

@@ -26,9 +26,9 @@ def ValFrameBase_factory(baseClass:pd.DataFrame|pd.Series):
         def __getattribute__(self, name:str):
             if name == 'index':
                 return super().__getattribute__('parent').mindex.index
-            elif name == 'columns' and hasattr(self,'columns'):
+            elif name == 'columns':
                 return super().__getattribute__('parent').mcolumns.index
-            elif name == 'name' and hasattr(self,'name'):
+            elif name == 'name':
                 return super().__getattribute__('parent').name.name
             elif name == 'iloc':
                 self._update_super_index
