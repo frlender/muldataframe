@@ -3,6 +3,7 @@ import muldataframe as md
 from typing import Any
 import muldataframe.cmm as cmm
 import muldataframe.ValFrameBase as vfb
+import numpy as np
 # import muldataframe.util as util
 
 class MulDataFrame:
@@ -91,6 +92,10 @@ class MulDataFrame:
                              index=self.index.index,
                              columns=self.columns.index,
                              copy=False)
+        elif hasattr(np,name) and hasattr(getattr(np,name),'__call__'):
+            def func(*args,**kwargs):
+                return self.call(getattr(np,name),*args,**kwargs)
+            return func
         
     def __setattr__(self, name: str, value: Any) -> None:
         if name in ['index','mindex','midx']:
@@ -104,6 +109,8 @@ class MulDataFrame:
         else:
             super().__setattr__(name, value)
 
+    def __len__(self):
+        return self.shape[0]
     
     def __eq__(self,other):
         return self.equals(other)
@@ -184,7 +191,8 @@ class MulDataFrame:
     
     
     def _xloc_set_factory(self,attr):
-        def _xloc_set(self,key,values):
+        def _xloc_set(key,values):
+            # print('===dddddd===',key,values)
             idx, col = self._get_indices(key)
             getattr(self.__df,attr)[idx,col] = values
         return _xloc_set
@@ -217,9 +225,11 @@ class MulDataFrame:
         return subset
         
 
-    def set_index(self,keys,mloc=False,drop=True,inplace=False):
-        if mloc:
-            keys = self._mloc_to_primary(keys,self.mcolumns)
+    def set_index(self,keys=None,mloc=None,drop=True,inplace=False):
+        if keys is None and mloc is None:
+            raise ValueError('one of the keys or the mloc argument must be set.')
+        if keys is None and mloc is not None:
+            keys = self._mloc_to_primary(mloc,self.mcolumns)
         sub_df = self.__df[keys]
         # print(self.mindex,sub_df)
         new_mindex =  pd.concat([self.mindex,sub_df],axis=1)
@@ -241,10 +251,12 @@ class MulDataFrame:
     def reset_index():
         pass
 
-    def drop_duplicates(self,subset=None,mloc=False,
+    def drop_duplicates(self,subset=None,mloc=None,
                         keep='first',inplace=False):
+        if subset is None and mloc is None:
+            raise ValueError('one of the subset or the mloc argument must be set.')
         if mloc:
-            subset = self._mloc_to_primary(subset,self.mcolumns)
+            subset = self._mloc_to_primary(mloc,self.mcolumns)
 
         # print(super(ValDataFrame,self.__df).index)
         # self.__df.index = list(range(self.shape[0]))
@@ -256,10 +268,14 @@ class MulDataFrame:
         new_df = self.__df.loc[bidx_keep]
 
         if inplace:
-            # primary_index = self.index.index
-            # primary_columns = self.columns.index
-            self.__df = ValDataFrame(self,new_df)
+            # Run "self.__df = ValDataFrame(self,new_df)"
+            # before "self.index = ..." reports error
+            # I don't know why. Possibly due to 
+            # some mechanisms in the pandas library
+            # that forces index to be consistent.
+            self.__df = None
             self.index = self.index.loc[bidx_keep]
+            self.__df = ValDataFrame(self,new_df)
         else:
             return MulDataFrame(new_df.values,
                         index=self.index.loc[bidx_keep],
@@ -268,12 +284,12 @@ class MulDataFrame:
     
     def iterrows(self):
         for i in range(self.shape[0]):
-            yield self.mindex.iloc[i], self.iloc[i]
+            yield (self.mindex.iloc[i], self.iloc[i])
     
     def call(self,func,*args,**kwargs):
         args = list(args)
-        if isinstance(args[0],md.MulSeries) or \
-            isinstance(args[0],MulDataFrame):
+        if len(args)>0 and (isinstance(args[0],md.MulSeries) or \
+            isinstance(args[0],MulDataFrame)):
             args[0] = args[0].ds
         
         if len(args) > 0 and hasattr(md,'__pandas_priority__') \
@@ -284,15 +300,15 @@ class MulDataFrame:
         new_df = func(self.__df,*args,**kwargs)
         func_name = func.__name__
         if isinstance(new_df,pd.DataFrame):
-            if new_df.index.shape[0] != self.shape[0] or \
-                new_df.index.shape[1] != self.shape[1]:
+            if new_df.shape[0] != self.shape[0] or \
+                new_df.shape[1] != self.shape[1]:
                 raise NotImplementedError
             
-            new_mindex = cmm.align_index_in_call(new_df,self,'index')
-            new_mcols = cmm.align_index_in_call(new_df,self,'columns')
+            new_mindex = cmm.align_index_in_call(new_df.index,self,'index')
+            new_mcols = cmm.align_index_in_call(new_df.columns,self,'columns')
             return  MulDataFrame(new_df.values,
                         index=new_mindex,columns=new_mcols,
-                        index_copy=True,columns_copy=True)
+                        index_copy=False,columns_copy=False)
             
             # if new_df.index.equals(self.mindex.index) and \
             #     new_df.columns.equals(self.mcolumns.index):
@@ -305,13 +321,13 @@ class MulDataFrame:
             if new_df.shape[0] == self.shape[0] and (
                 new_df.shape[0] != self.shape[1] or 
                 ('axis' in kwargs and kwargs['axis'] == 1) ):
-                new_idx = cmm.align_index_in_call(new_df,self,'index')
+                new_idx = cmm.align_index_in_call(new_df.index,self,'index')
                 return md.MulSeries(new_df.values,index=new_idx,name=func_name,
                                     index_copy=False)
             elif new_df.shape[0] == self.shape[1] and  (
                  new_df.shape[0] != self.shape[0] or 
                 ('axis' in kwargs and kwargs['axis'] == 0) ):
-                new_idx = cmm.align_index_in_call(new_df,self,'columns')
+                new_idx = cmm.align_index_in_call(new_df.index,self,'columns')
                 return md.MulSeries(new_df.values,index=new_idx,name=func_name,
                                     index_copy=False)
             else:
@@ -441,66 +457,3 @@ for op in ops:
 
 ValDataFrame = vfb.ValFrameBase_factory(pd.DataFrame)
 
-# class MulDataFrameGroupby[G,M](cmm.MulGroupBy):
-#     def call(self,func,*args,**kwargs):
-#         res = None
-#         for i,(k,gp) in enumerate(self):
-#             val = gp.call(func,*args,**kwargs)
-#             if isinstance(val,M):
-#                 return NotImplemented
-#             index = util.aggregate_index(i,gp.index,self.index_agg)
-
-
-
-# class ValDataFrame(pd.DataFrame):
-    # def __init__(self,parent:MulDataFrame,df:pd.DataFrame):
-    #     super().__init__(df)
-    #     self.parent = parent
-    #     self._iloc_accessor = cmm.Accessor(self._iloc,
-    #                              self._set_iloc,len(self.shape))
-    #     self._loc_accessor = cmm.Accessor(self._loc,
-    #                              self._set_loc,len(self.shape))
-
-
-    # def _update_super_index(self):
-    #     self.index = self.parent.mindex.index
-    #     self.columns = self.parent.mcolumns.index
-
-    # def __getitem__(self,key):
-    #     # # Without calling self._update_super_index(),
-    #     # # the expression below uses self.parent.mindex.index
-    #     # # to index but returns a dataframe or series with
-    #     # # super(ValDataFrame,self).index.
-    #     # res = super().__getitem__(key)
-    #     self._update_super_index()
-    #     return super().__getitem__(key)
-        
-    # def _iloc(self,key):
-    #     self._update_super_index()
-    #     return super().iloc[key]
-    
-    # def _set_iloc(self,key,value):
-    #     self._update_super_index()
-    #     super().iloc[key] = value
-    
-    # def _loc(self,key):
-    #     self._update_super_index()
-    #     return super().loc[key]
-    
-    # def _set_loc(self,key,value):
-    #     self._update_super_index()
-    #     super().loc[key] = value
-
-
-    # def __getattribute__(self, name:str):
-    #     if name == 'index':
-    #         return super().__getattribute__('parent').index.index
-    #     elif name == 'columns':
-    #         return super().__getattribute__('parent').columns.index
-    #     elif name == 'iloc':
-    #         return super().__getattribute__('_iloc_accessor')
-    #     elif name == 'loc':
-    #         return super().__getattribute__('_loc_accessor')
-    #     else:
-    #         return super().__getattribute__(name)
-   

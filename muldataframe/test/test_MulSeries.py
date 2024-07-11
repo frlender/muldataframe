@@ -175,6 +175,19 @@ def test_ops_get_set_items():
     with pytest.raises(NotImplementedError):
         ms.call(to_df)
 
+    index = pd.DataFrame([['a','b'],['c','d']],
+                         index=['e','f'])
+    ms = MulSeries(pd.Series([1,3],index=['e','f']), 
+                        index=index)
+    assert ms.mean() == 2
+
+    ms2 = ms.multiply(2)
+    assert isinstance(ms2,MulSeries)
+    assert eq(ms2.values,[2,6])
+
+    ms2 = ms.log2()
+    assert ms2.iloc[0] == 0
+
 
 def test_loc():
     index = pd.DataFrame([['a','b','c'],

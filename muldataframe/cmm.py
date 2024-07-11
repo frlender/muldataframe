@@ -29,6 +29,7 @@ class Accessor:
     def __setitem__(self,key,value):
         if isinstance(key,tuple) and len(key) > self.max_idx:
             raise IndexError(f"Too many indices. Only {self.max_idx} {'indices are' if self.max_idx > 1 else 'index is'} allowed")
+        # print(key,value,self.setter)
         self.setter(key,value)
     
 
@@ -119,11 +120,11 @@ def checkSetIdxValue(self,name,value):
         value.shape[0] != self.shape[shapeIdx]:
         raise IndexError(f"The assigned value must be a dataframe with its index length being the same as the {className}'s {name} length.")
 
-def align_index_in_call(new_ds:pd.DataFrame|pd.Series,
-                        self,
-                        indexType:IndexType):
+def align_index_in_call(idx,self,indexType:IndexType):
+    if idx.equals(getattr(self,indexType).index):
+        return getattr(self,indexType).copy()
     try:
-        new_idx = getattr(self,indexType).loc[getattr(new_ds,indexType)]
+        new_idx = getattr(self,indexType).loc[idx]
         if new_idx.shape[0] == getattr(self,indexType).shape[0]:
             return new_idx
         else:
@@ -176,7 +177,7 @@ class MulGroupBy(Generic[G,M]):
         self.indexType = indexType
     
     def __iter__(self):
-        if self.indexType in ['index','mindex']:
+        if self.indexType in ['index','mindex','midx']:
             for k,v in self.groupBy.indices.items():
                 yield k, self.parent.iloc[v]
         else:

@@ -122,7 +122,170 @@ def test_get_setitem():
     assert eq(md.loc[:,'c'].values,[5,5,5])
 
 
+def test_op_call():
+    md,index,columns = get_data()
+    assert md != md.df
 
+    md2 = md*2
+    md3 = 2*md
+    assert md2 == md3
+    assert eq(md2.iloc[:,0],[2,16,16])
+
+    md2 = md.sum(axis=0)
+    assert eq(md2.values,[17,21])
+
+    md2 = md.power(2)
+    assert md2.iloc[1,0] == 64
+
+    md.iloc[1,0] = 6
+    assert md.mean() == 6
+
+    md,index,columns = get_data()
+    
+    md2 = md + np.array([[1,1],[1,1],[1,1]])
+    assert isinstance(md,MulDataFrame)
+    assert md2.iloc[0,0] == 2
+    assert md2.iloc[2,1] == 11
+
+    md2 = md + pd.DataFrame([[1,1],[1,1],[1,1]],index=['a','b','b'],
+                  columns=['c','d'])
+    assert isinstance(md,MulDataFrame)
+    assert md2.iloc[0,0] == 2
+    assert md2.iloc[2,1] == 11
+
+    md2 = md * pd.Series([2,2],index=['c','d'])
+    assert md2.iloc[0,0] == 2
+    assert md2.iloc[2,1] == 20
+
+    md2 = md * MulSeries(pd.Series([2,2],index=['c','d']))
+    assert md2.iloc[0,0] == 2
+    assert md2.iloc[2,1] == 20
+
+    md2 = md.mean(axis=1)
+    assert eq(md2.values,[1.5,8.5,9.0])
+
+    def func(df):
+        return df.iloc[:2]
+    with pytest.raises(NotImplementedError):
+        md.call(func)
+    
+    def func(df):
+        return df.iloc[:,[1,0]]
+    md2 = md.call(func)
+    assert eq(md2.iloc[0].values,[2,1])
+    
+
+def test_mloc():
+    md,index,columns = get_data()
+    md2 = md.mloc[[None,6]]
+    assert eq(md2.values,[[8,9],[8,10]])
+    md2 = md.mloc[[[1,3],6]]
+    assert eq(md2.values,[8,9])
+
+    md2 = md.mloc[[[1,3],[6]]]
+    assert eq(md2.values,[[8,9]])
+
+    md2 = md.mloc[[3,6]]
+    assert eq(md2.values,[8,9])
+
+    with pytest.raises(KeyError):
+        md.mloc[[1,6]]
+
+    md2 = md.mloc[{'y':6,'x':3}]
+    assert eq(md2.values,[8,9])
+    md2 = md.mloc[{'y':6,'x':[3]}]
+    assert eq(md2.values,[[8,9]])
+    with pytest.raises(KeyError):
+        md.mloc[{'y':6,'x':[1,3]}]
+
+    md2 = md.mloc[:,[None,7]]
+    assert eq(md2.values,[1,8,8])
+    md2 = md.mloc[[None,6],[None,7]]
+    assert eq(md2.values,[8,8])
+
+    md2 = md.mloc[[None,2],{'g':6}]
+    assert md2 == 2
+
+    md.mloc[[None,2],{'g':6}] = 3
+    assert md.iloc[0,1] == 3
+
+    md.mloc[[None,6],{'f':5}] = [5,5]
+    assert eq(md.iloc[1:,0].values, [5,5])
+
+    md.mcols.iloc[:,0] = [5,5]
+    md.mloc[[1],[5]] = [3,3]
+    assert eq(md.iloc[0,:].values, [3,3])
+
+def test_set_index():
+    md,index,columns = get_data()
+    md2 = md.set_index('c')
+    assert md2.shape == (3,1)
+    assert md2.mindex.shape == (3,3)
+    assert eq(md2.mindex['c'], [1,8,8])
+
+    md.set_index('c',inplace=True,drop=False)
+    assert md.shape == (3,2)
+    assert md.mindex.shape == (3,3)
+    assert eq(md.mindex['c'], [1,8,8])
+
+    md,index,columns = get_data()
+    md.set_index('c',inplace=True,drop=True)
+    assert md.shape == (3,1)
+    assert md.mindex.shape == (3,3)
+    assert eq(md.mindex['c'], [1,8,8])
+
+    md,index,columns = get_data()
+    md.mcols.iloc[:,0] = [5,5]
+    md2 = md.set_index(mloc=[5])
+    # print(md2)
+    assert md2.shape == (3,0)
+    assert md2.mindex.shape == (3,4)
+    assert eq(md2.mindex['c'], [1,8,8])
+
+    with pytest.raises(ValueError):
+        md.set_index()
+
+
+def test_drop_duplicates():
+    md,index,columns = get_data()
+    md2 = md.drop_duplicates('c')
+    assert eq(md2.values,[[1,2],[8,9]])
+
+    md2 = md.drop_duplicates(['c','d'])
+    assert md2.equals(md)
+
+    md2 = md.drop_duplicates(mloc=[3])
+    assert md2.equals(md)
+
+    md2 = md.drop_duplicates(mloc={'g':7})
+    assert eq(md2.values,[[1,2],[8,9]])
+
+    md.drop_duplicates('c',inplace=True)
+    assert eq(md.values,[[1,2],[8,9]])
+
+    with pytest.raises(ValueError):
+        md.drop_duplicates()
+
+def test_iterrows():
+    md,index,columns = get_data()
+    for i, (k,row) in enumerate(md.iterrows()):
+        assert isinstance(row,MulSeries)
+        if i == 0:
+            assert k.name == 'a'
+        else:
+            assert k.name == 'b'
+
+
+def test_groupby():
+    md, index, columns = get_data()
+    for i, (k,gp) in md.groupby('y'):
+        if i==0:
+            assert k == 2
+            assert gp.shape == (1,2)
+            assert isinstance(gp,MulDataFrame)
+        else:
+            assert k == 6
+            assert gp.shape == (2,2)
 
 
 def test_query():

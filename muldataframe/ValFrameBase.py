@@ -5,7 +5,11 @@ def ValFrameBase_factory(baseClass:pd.DataFrame|pd.Series):
     class ValFrameBase(baseClass):
         def __init__(self,parent,df):
             super().__init__(df)
+            # if baseClass == pd.DataFrame:
+            #     print(df.shape,self.shape)
             self.parent = parent
+            # if baseClass == pd.DataFrame:
+            #     print(df.shape,self.shape)
 
         # @abstractmethod
         def _update_super_index(self):

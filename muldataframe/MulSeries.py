@@ -69,6 +69,11 @@ class MulSeries:
                              index=self.index.index.copy(),
                              name=self.name.name,
                              copy=False)
+        elif hasattr(np,name) and hasattr(getattr(np,name),'__call__'):
+            def func(*args,**kwargs):
+                return self.call(getattr(np,name),*args,**kwargs)
+            return func
+
         
     def _hasVal(self):
         return self.__ss is not None
@@ -82,7 +87,9 @@ class MulSeries:
         else:
             super().__setattr__(name, value)
 
-    
+    def __len__(self):
+        return self.shape[0]
+
     def __eq__(self,other):
         return self.equals(other)
     
@@ -180,7 +187,7 @@ class MulSeries:
                 if not res.index.equals(self.index.index):
                     try:
                         # res2 = self.loc[res.index]
-                        new_idx = cmm.align_index_in_call(res,self,
+                        new_idx = cmm.align_index_in_call(res.index,self,
                                                           'index')
                         if new_idx.shape[0] == self.shape[0]:
                             return MulSeries(res.values,
@@ -221,6 +228,7 @@ class MulSeries:
         if inplace:
             # primary_index = self.index.index
             # primary_columns = self.columns.index
+            self.__ss = None
             self.index = self.index.loc[bidx_keep]
             self.__ss = ValSeries(self,new_ss)
         else:
@@ -243,6 +251,17 @@ for op in ops:
     r_op_attr = '__r'+op+'__'
     setattr(MulSeries,r_op_attr,call_op_factory(r_op_attr))
 
+
+# ops = []
+# for op in ops:
+#     op_attr = '__'+op+'__'
+#     def call_op_factory(op_attr):
+#         def call_op(self,other):
+#             func = getattr(pd.Series,op_attr)
+#             # print(op_attr,func)
+#             return self.call(func,other)
+#         return call_op
+#     setattr(MulSeries,op_attr,call_op_factory(op_attr))
 
 
 ValSeries = vfb.ValFrameBase_factory(pd.Series)
