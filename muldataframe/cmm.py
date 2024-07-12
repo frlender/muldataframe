@@ -184,11 +184,19 @@ class MulGroupBy(Generic[G,M]):
             for k,v in self.groupBy.indices.items():
                 yield k, self.parent.iloc[:,v]
     
+
+    def __getattr__(self,name):
+        if hasattr(np,name) and hasattr(getattr(np,name),'__call__'):
+            def func(*args,**kwargs):
+                return self.call(getattr(np,name),*args,**kwargs)
+            return func
+        
     def call(self,func,*args,**kwargs):
         # print('******',G,M,type(G),)
         G_class, M_class = self.__orig_class__.__args__
         res = None
         use_mul = False
+        arr = []
         if 'use_mul' in kwargs:
             use_mul = kwargs['use_mul']
             del kwargs['use_mul']
@@ -198,42 +206,50 @@ class MulGroupBy(Generic[G,M]):
             else:
                 val = gp.call(func,*args,**kwargs)
             if isinstance(val,M_class): # MulSeries
-                if i == 0:
-                    res = val
-                else:
-                    res = md.concat(res,val)
+               arr.append(val)
                 # return NotImplemented
             else:
                 index = gp.index
                 index = md.aggregate_index(i,index,self.index_agg)
-                if isinstance(self,md.MulDataFrame) and \
-                    isinstance(val,md.MulSeries):
-                    ms = M_class([val.values],index=index,
-                        columns=val.columns.copy())
-                else:
+                if not isinstance(val,md.MulDataFrame) and \
+                    not isinstance(val,md.MulSeries):
                     if isinstance(self.parent,md.MulSeries):
                         name = self.parent.name.copy()
                     else:
                         name = func.__name__
-                    ms = M_class([val],index=index,
+                    ms = md.MulSeries([val],index=index,
                                 name=name)
-                if i == 0:
-                    res = ms
+                elif isinstance(self.parent,md.MulDataFrame) and \
+                    isinstance(val,md.MulSeries):
+                    if self.indexType == 'index':
+                         ms = md.MulDataFrame([val.values],
+                            index=index,
+                            columns=val.index,both_copy=False)
+                        #  print(val,ms)
+                    else:
+                        ms = md.MulDataFrame([[x] for x in val.values],
+                            index=val.index,
+                            columns=index,both_copy=False)
                 else:
-                    res = md.concat(res,ms)
+                    raise NotImplementedError('The function applied to a group MulDataFrame can only produce a A MulDataFrame, a MulSeries or a scalar. The function applied to a group MulSeries can only produce a MulSeries or a scalar.')
+
+
+                arr.append(ms)
+        axis = 0 if self.indexType == 'index' else 1
+        res = md.concat(arr,axis=axis)
         return res
 
 
 # funcs = ['mean','median','std','var','sum','prod','count','first','last','mad']
-funcs = ['mean','median','std','var','sum','prod']
-for func_name in funcs:
-    def call_func_factory(func_name):
-        def call_func(self,*args,**kwargs):
-            func = getattr(np,func_name)
-            # print(op_attr,func)
-            return self.call(func,*args,**kwargs)
-        return call_func
-    setattr(MulGroupBy,func_name,call_func_factory(func_name))
+# funcs = ['mean','median','std','var','sum','prod']
+# for func_name in funcs:
+#     def call_func_factory(func_name):
+#         def call_func(self,*args,**kwargs):
+#             func = getattr(np,func_name)
+#             # print(op_attr,func)
+#             return self.call(func,*args,**kwargs)
+#         return call_func
+#     setattr(MulGroupBy,func_name,call_func_factory(func_name))
 
 
 # def concat(ss1:MulSeries,ss2:MulSeries):

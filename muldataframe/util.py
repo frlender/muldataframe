@@ -26,18 +26,26 @@ def aggregate_index(i:int,index:pd.DataFrame,index_agg:cmm.IndexAgg) -> pd.DataF
                 index_vals.append(vals)
         return pd.DataFrame([index_vals],columns=index.columns,index=final_index)
 
+        
 
-def concat(mds1:md.MulSeries|md.MulDataFrame,
-           mds2:md.MulSeries|md.MulDataFrame):        
-    ds_new = pd.concat([mds1.ds,mds2.ds],join='inner')
-    mindex_new = pd.concat([mds1.mindex,mds2.mindex],join='inner')
+def concat(arr:list[md.MulSeries|md.MulDataFrame],axis=0):
+    ds_new = pd.concat([x.ds for x in arr],join='inner',axis=axis)
     # print('ddddddd',mds1.ds,mds2.ds,ds_new)
     if isinstance(ds_new,pd.Series):
+        mindex_new = pd.concat([x.index for x in arr],join='inner')
         return md.MulSeries(ds_new.values,index=mindex_new,
-                    name=mds1.name.copy())
+                    name=arr[0].name,index_copy=False)
     else:
-        return md.MulDataFrame(ds_new.values,index=mindex_new,
-                    columns=ds_new.columns.copy())
+        if axis == 0:
+            mindex_new = pd.concat([x.index for x in arr],join='inner')
+            return md.MulDataFrame(ds_new.values,index=mindex_new,
+                    columns=arr[0].columns,index_copy=False)
+        else:
+            mcols_new = pd.concat([x.columns 
+                if hasattr(x,'columns') else x.name 
+                for x in arr],join='inner')
+            return md.MulDataFrame(ds_new.values,index=arr[0].index,
+                    columns=mcols_new,columns_copy=False)
     
 
 def pivot_table(*args,**kwargs):

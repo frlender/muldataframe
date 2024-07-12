@@ -127,6 +127,18 @@ class MulDataFrame:
         return MulDataFrame(self.__df.copy().values,
                              index=self.index,
                              columns=self.columns)
+    
+
+    def transpose(self,inplace=False):
+        if inplace:
+            __df = self.__df
+            self.__df = None
+            self.index, self.columns = self.columns, self.index
+            self.__df = ValDataFrame(self,__df.values.T)
+        else:
+            return MulDataFrame(self.values.copy().T,
+                index=self.columns,columns=self.index)
+
     def _get_indices(self,key):
         if isinstance(key,tuple):
                 idx,col = key
@@ -248,7 +260,37 @@ class MulDataFrame:
                         index=new_mindex,
                         columns=new_mcolumns)
 
-    def reset_index():
+    def reset_index(self,columns=None, drop=False, 
+                    inplace=False, col_fill=''):
+        # ss = pd.Series(range(self.mindex.shape[1]),
+        #                index=self.mindex.columns)
+        mselect = self.mindex[columns]
+        if inplace:
+            self.mindex.drop(columns,axis=1,inplace=True)
+            ds = self.ds
+            self.__df = None
+            if isinstance(col_fill,pd.Series) or \
+                isinstance(col_fill,pd.DataFrame):
+                mcols = pd.concat([col_fill,self.mcols],axis=1,copy=False)
+                self.mcols = mcols
+            else:
+                for i, col in enumerate(mselect.columns):
+                    self.mcols.insert(i,col,col_fill,allow_duplicates=True)
+            ds = pd.concat([mselect,ds],axis=1,copy=False)
+            self.__df = ValDataFrame(self,ds)
+        else:
+            mkeep = self.mindex.drop(columns,axis=1)
+            if isinstance(col_fill,pd.Series) or \
+                isinstance(col_fill,pd.DataFrame):
+                mcols = pd.concat([col_fill,self.mcols],axis=1)
+            else:
+                mcols = self.mcols.copy()
+                for i, col in enumerate(mselect.columns):
+                    mcols.insert(i,col,col_fill,allow_duplicates=True)
+            df = pd.concat([mselect,self.ds],axis=1)
+            return MulDataFrame(df.values,index=mkeep,columns=mcols)
+            
+
         pass
 
     def drop_duplicates(self,subset=None,mloc=None,

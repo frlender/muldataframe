@@ -122,6 +122,30 @@ def test_get_setitem():
     assert eq(md.loc[:,'c'].values,[5,5,5])
 
 
+def test_transpose():
+    md,index,columns = get_data()
+    md2 = md.transpose()
+    assert md2.index.equals(md.columns)
+    assert md2.columns.equals(md.index)
+    assert eq(md2.values.T,md.values)
+    md2.iloc[0,0] = 5
+    assert md.iloc[0,0] == 1
+    md2.index.iloc[0,0] = 100
+    assert md.columns.iloc[0,0] == 5
+
+    md2 = md.copy()
+    vals = md2.values
+    index = md2.index
+    md2.transpose(inplace=True)
+    assert md2.index.equals(md.columns)
+    assert md2.columns.equals(md.index)
+    assert eq(md2.values.T,md.values)
+    md2.iloc[0,0] = 5
+    assert vals[0,0] == 5
+    md2.columns.iloc[0,0] = 100
+    assert index.iloc[0,0] == 100
+
+
 def test_op_call():
     md,index,columns = get_data()
     assert md != md.df
@@ -276,9 +300,15 @@ def test_iterrows():
             assert k.name == 'b'
 
 
+def test_iloc():
+    md, index, columns = get_data()
+    md2 = md.iloc[np.array([0])]
+    assert eq(md2.values,[[1,2]])
+
 def test_groupby():
     md, index, columns = get_data()
-    for i, (k,gp) in md.groupby('y'):
+    gpo =  md.groupby('y')
+    for i, (k,gp) in enumerate(gpo):
         if i==0:
             assert k == 2
             assert gp.shape == (1,2)
@@ -286,6 +316,36 @@ def test_groupby():
         else:
             assert k == 6
             assert gp.shape == (2,2)
+            assert gp.mcols.shape == (2,2)
+    
+    md2 = md.groupby('y').mean(axis=0)
+    assert eq(md2.values,[[1,2],[8,9.5]])
+    assert md2.mcols.shape == (2,2)
+    assert md2.index.shape == (2,1)
+
+    md2 = md.transpose()
+    md3 = md2.groupby('y',axis=1).mean(axis=1)
+    assert eq(md3.values,[[1,8],[2,9.5]])
+    assert md3.index.shape == (2,2)
+
+    md2 = md.groupby().mean(axis=0)
+    assert eq(md2.values,[[1,2],[8,9.5]])
+    assert md2.index.shape == (2,2)
+
+    md2 = md.groupby(agg_mode='array').mean(axis=0)
+    assert eq(md2.values,[[1,2],[8,9.5]])
+    assert md2.index.shape == (2,3)
+    assert eq(md2.index.iloc[1,1],[3,5])
+
+    md2 = md.groupby(['x','y']).mean(axis=0)
+    assert eq(md2.values,md.values)
+    assert md2.index.shape == (3,2)
+    assert eq(md2.index.index.values,[0,1,2])
+
+    md2 = md.groupby(['x','y']).mean()
+    assert eq(md2.values,[1.5,8.5,9.0])
+    assert md2.shape == (3,)
+    assert md2.name.name == 'mean'
 
 
 def test_query():
