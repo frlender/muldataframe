@@ -270,6 +270,60 @@ def test_set_index():
         md.set_index()
 
 
+def test_reset_index():
+    md,index,columns = get_data()
+    md2 = md.reset_index()
+    # print(md2)
+    assert md2.mindex.shape == md.mindex.shape
+    assert eq(md2.mindex.index.values,[0,1,2])
+    assert eq(md2.mcols.index, ['primary_index','c','d'])
+    assert eq(md2.mcols.iloc[0],['',''])
+    assert md2.mcols.shape == (3,2)
+
+    md.reset_index(inplace=True,col_fill=0)
+    md2 = md
+    assert md2.mindex.shape == md.mindex.shape
+    assert eq(md2.mindex.index.values,[0,1,2])
+    assert eq(md2.mcols.index, ['primary_index','c','d'])
+    assert eq(md2.mcols.iloc[0],[0,0])
+    assert md2.mcols.shape == (3,2)
+
+    md,index,columns = get_data()
+    md2 = md.reset_index(drop=True)
+    assert md.mindex.shape == md2.mindex.shape
+    assert md.shape == md2.shape
+    assert eq(md2.index.index,[0,1,2])
+
+    md2 = md.reset_index(['x','y'])
+    # print(md,'\n',md2)
+    assert md2.mindex.shape == (3,0)
+    assert md2.mcols.shape == (4,2)
+    assert md2.mindex.index.equals(md.mindex.index)
+
+    md2 = md.set_index('c')
+    ss = md.mcols.loc['c']
+    md3 = md2.reset_index('c',col_fill=ss)
+    assert md3 == md
+    
+    md2 = md.set_index(['c','d'])
+    # print(md2)
+    md3 = md2.reset_index(['c','d'],col_fill=md.mcols)
+    assert md3 == md
+
+    md3 = md2.reset_index(['c','d'],col_fill=md.mcols.loc[['d','c']])
+    assert md3 == md
+
+    with pytest.raises(IndexError):
+        md2.reset_index(['c','d'],col_fill=md.mcols.loc[['d','c','c']])
+    md.mcols.index = ['k','m']
+    with pytest.raises(KeyError):
+        md2.reset_index(['c','d'],col_fill=md.mcols)
+
+
+
+
+
+
 def test_drop_duplicates():
     md,index,columns = get_data()
     md2 = md.drop_duplicates('c')
@@ -346,6 +400,9 @@ def test_groupby():
     assert eq(md2.values,[1.5,8.5,9.0])
     assert md2.shape == (3,)
     assert md2.name.name == 'mean'
+
+
+
 
 
 def test_query():

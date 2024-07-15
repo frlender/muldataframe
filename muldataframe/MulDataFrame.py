@@ -259,39 +259,71 @@ class MulDataFrame:
             return MulDataFrame(new_df.values,
                         index=new_mindex,
                         columns=new_mcolumns)
+        
+    def __fill_cols(self,col_fill,cols,inplace):
+        if isinstance(col_fill,pd.Series) or \
+            isinstance(col_fill,pd.DataFrame):
+            if isinstance(col_fill,pd.Series):
+                col_fill = pd.DataFrame(col_fill).transpose()
+            col_fill = cmm.test_idx_eq(col_fill,cols)
+            if inplace:
+                self.mcols = mcols
+            else:
+                mcols = pd.concat([col_fill,self.mcols],axis=0)
+                return mcols
+        else:
+            mcols = self.mcols.transpose()
+            for i, col in enumerate(cols):
+                mcols.insert(i,col,col_fill,allow_duplicates=True)
+            if inplace:
+                self.mcols = mcols.transpose()
+            else:
+                return mcols.transpose()
 
     def reset_index(self,columns=None, drop=False, 
                     inplace=False, col_fill=''):
-        # ss = pd.Series(range(self.mindex.shape[1]),
-        #                index=self.mindex.columns)
-        mselect = self.mindex[columns]
-        if inplace:
-            self.mindex.drop(columns,axis=1,inplace=True)
-            ds = self.ds
-            self.__df = None
-            if isinstance(col_fill,pd.Series) or \
-                isinstance(col_fill,pd.DataFrame):
-                mcols = pd.concat([col_fill,self.mcols],axis=1,copy=False)
-                self.mcols = mcols
+        if columns is None:
+            if self.mindex.index.name is None:
+                indexName = cmm.get_index_name('index',
+                                               self.mindex.columns)
             else:
-                for i, col in enumerate(mselect.columns):
-                    self.mcols.insert(i,col,col_fill,allow_duplicates=True)
-            ds = pd.concat([mselect,ds],axis=1,copy=False)
-            self.__df = ValDataFrame(self,ds)
+                indexName = self.mindex.index.name
+            mselect = pd.DataFrame(self.mindex.index,
+                                   index=self.mindex.index,
+                                   columns=[indexName])
         else:
-            mkeep = self.mindex.drop(columns,axis=1)
-            if isinstance(col_fill,pd.Series) or \
-                isinstance(col_fill,pd.DataFrame):
-                mcols = pd.concat([col_fill,self.mcols],axis=1)
+            mselect = self.mindex[columns]
+            if isinstance(mselect,pd.Series):
+                mselect = pd.DataFrame(mselect)
+        if inplace:
+            if columns is not None:
+                self.mindex.drop(columns,axis=1,inplace=True)
+            if not drop:
+                ds = self.ds
+                self.__df = None
+                self.__fill_cols(col_fill,mselect.columns,True)
+                ds = pd.concat([mselect,ds],axis=1,copy=False)
+                self.__df = ValDataFrame(self,ds)
+            if columns is None:
+                self.mindex.index = range(self.shape[0])
+
+        else:
+            if columns is not None:
+                mkeep = self.mindex.drop(columns,axis=1)
+            else:
+                mkeep = self.mindex.copy()
+                mkeep.index = range(self.shape[0])
+            if not drop:
+                mcols = self.__fill_cols(col_fill,mselect.columns,
+                                         False)
+                df = pd.concat([mselect,self.ds],axis=1)
             else:
                 mcols = self.mcols.copy()
-                for i, col in enumerate(mselect.columns):
-                    mcols.insert(i,col,col_fill,allow_duplicates=True)
-            df = pd.concat([mselect,self.ds],axis=1)
-            return MulDataFrame(df.values,index=mkeep,columns=mcols)
+                df = self.df
+            mf = MulDataFrame(df.values,index=mkeep,columns=mcols,
+                              index_copy=False,columns_copy=False)
+            return mf
             
-
-        pass
 
     def drop_duplicates(self,subset=None,mloc=None,
                         keep='first',inplace=False):

@@ -1,5 +1,6 @@
 
 from ..MulSeries import MulSeries
+from ..MulDataFrame import MulDataFrame
 import pandas as pd
 from .lib import eq
 import pytest
@@ -269,7 +270,7 @@ def test_mloc_set():
                         [ 'g','b','f'],
                         [ 'b','g','h']],
                         columns=['x','y','y'])
-    name = name = pd.Series(['a','b'],index=['e','f'],name='cc')
+    name = pd.Series(['a','b'],index=['e','f'],name='cc')
     ms = MulSeries([1,2,3],index=index,name=name)
     ms.mloc[[None,'g']] = 5
     assert eq(ms.values,[1,2,5])
@@ -291,6 +292,91 @@ def test_mloc_set():
     ms.mloc[{'y':'b'}] = [5,6]
     assert eq(ms.values,[5,6,3])
 
+
+def get_data():
+    index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                     index=['a','b','b'],
+                     columns=['x','y'])
+    columns = pd.DataFrame([[5,7],[3,6]],
+                        index=['c','d'],
+                        columns=['f','g'])
+    ms = MulSeries([1,8,9],index=index,name=columns.loc['c'])
+    return ms,index,ms.name
+
+def get_data2():
+    index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                     index=['a','b','b'],
+                     columns=['x','y'])
+    columns = pd.DataFrame([[5,7],[3,6]],
+                        index=['c','d'],
+                        columns=['f','g'])
+    md = MulDataFrame([[1,2],[8,9],[8,10]],index=index,
+                    columns=columns)
+    return md,index,columns
+
+def test_reset_index():
+    md,index,name = get_data()
+    md2 = md.reset_index()
+    # print(md2)
+    assert md2.mindex.shape == md.mindex.shape
+    assert eq(md2.mindex.index.values,[0,1,2])
+    assert eq(md2.mcols.index, ['primary_index','c'])
+    assert eq(md2.mcols.iloc[0],['',''])
+    assert md2.mcols.shape == (2,2)
+
+    with pytest.raises(TypeError):
+        md.reset_index(inplace=True,col_fill=0)
+
+    md,index,columns = get_data()
+    md2 = md.reset_index(drop=True)
+    assert md.mindex.shape == md2.mindex.shape
+    assert md.shape == md2.shape
+    assert eq(md2.index.index,[0,1,2])
+
+    md2 = md.reset_index(['x','y'])
+    # print(md,'\n',md2)
+    assert md2.mindex.shape == (3,0)
+    assert md2.mcols.shape == (3,2)
+    assert md2.mindex.index.equals(md.mindex.index)
+    
+    md, index, columns = get_data2()
+    md2 = md.set_index('c')
+    ss = md.mcols.loc['c']
+    ms = md2['d']
+    md3 = ms.reset_index('c',col_fill=ss)
+    assert md3 == md
+
+    md2 = md.reset_index('x')
+    md3 = md2.set_index(['x','c'])
+    df = md2.mcols.loc[['x','c']]
+    md4 = md3['d']
+    md5 = md4.reset_index(['x','c'],col_fill=df)
+    assert md5 == md2
+
+    with pytest.raises(IndexError):
+        md4.reset_index(['x','c'],col_fill=df.loc[['x','c','c']])
+    df.index = ['k','m']
+    with pytest.raises(KeyError):
+        md2.reset_index(['c','d'],col_fill=df)
+
+def test_drop_duplicates():
+    index = pd.DataFrame([['a','b','c'],
+                        [ 'g','b','f'],
+                        [ 'b','g','h']],
+                        columns=['x','y','z'])
+    name = pd.Series(['a','b'],index=['e','f'],name='cc')
+    ms = MulSeries([1,2,2],index=index,name=name)
+
+    ms2 = ms.drop_duplicates()
+    assert ms2.shape == (2,)
+    assert ms2.mindex.shape == (2,3)
+    assert eq(ms2.mindex.index,[0,1])
+
+    ms.drop_duplicates(inplace=True)
+    ms2 = ms
+    assert ms2.shape == (2,)
+    assert ms2.mindex.shape == (2,3)
+    assert eq(ms2.mindex.index,[0,1])
 
 
 def test_groupby():

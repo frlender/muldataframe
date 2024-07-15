@@ -157,8 +157,60 @@ class MulSeries:
             nx = self._mloc(key)
             self.iloc[nx] = values
 
-    # def __add__(self,other):
-    #     return self.call(pd.Series.__add__,other)
+    def __fill_cols(self,col_fill,cols,inplace):
+        if isinstance(col_fill,pd.Series) or \
+            isinstance(col_fill,pd.DataFrame):
+            if isinstance(col_fill,pd.Series):
+                col_fill = pd.DataFrame(col_fill).transpose()
+            col_fill = cmm.test_idx_eq(col_fill,cols)
+            mcols = pd.DataFrame(self.name).transpose()
+            mcols = pd.concat([col_fill,mcols],axis=0)
+            return mcols
+        else:
+            mcols = pd.DataFrame(self.name)
+            for i, col in enumerate(cols):
+                mcols.insert(i,col,col_fill,allow_duplicates=True)
+            return mcols.transpose()
+            
+    def reset_index(self,columns=None, drop=False, 
+                    inplace=False, col_fill=''):
+        if columns is None:
+            if self.mindex.index.name is None:
+                indexName = cmm.get_index_name('index',
+                                               self.mindex.columns)
+            else:
+                indexName = self.mindex.index.name
+            mselect = pd.DataFrame(self.mindex.index,
+                                   index=self.mindex.index,
+                                   columns=[indexName])
+        else:
+            mselect = self.mindex[columns]
+            if isinstance(mselect,pd.Series):
+                mselect = pd.DataFrame(mselect)
+        if inplace:
+            if columns is not None:
+                self.mindex.drop(columns,axis=1,inplace=True)
+            if not drop:
+                raise TypeError('Cannot reset_index inplace on a MulSeries to create a MulDataFrame')
+            if columns is None:
+                self.mindex.index = range(self.shape[0])
+        else:
+            if columns is not None:
+                mkeep = self.mindex.drop(columns,axis=1)
+            else:
+                mkeep = self.mindex.copy()
+                mkeep.index = range(self.shape[0])
+            if not drop:
+                mcols = self.__fill_cols(col_fill,mselect.columns,
+                                         False)
+                df = pd.concat([mselect,self.ds],axis=1)
+                print(df,mcols)
+                return md.MulDataFrame(df.values,index=mkeep,columns=mcols,
+                              index_copy=False,columns_copy=False)
+            else:
+                self2 = self.copy()
+                self2.index = mkeep
+                return self2
 
     def call(self,func,*args,**kwargs):
         # if 'unsafe' in kwargs and kwargs['unsafe']:
@@ -223,7 +275,7 @@ class MulSeries:
     def drop_duplicates(self,keep='first', inplace=False):
         bidx = self.__ss.duplicated(keep=keep)
         bidx_keep = ~bidx
-        new_ss = self.__ss.loc[bidx]
+        new_ss = self.__ss.loc[bidx_keep]
 
         if inplace:
             # primary_index = self.index.index

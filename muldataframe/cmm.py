@@ -120,17 +120,32 @@ def checkSetIdxValue(self,name,value):
         value.shape[0] != self.shape[shapeIdx]:
         raise IndexError(f"The assigned value must be a dataframe with its index length being the same as the {className}'s {name} length.")
 
-def align_index_in_call(idx,self,indexType:IndexType):
-    if idx.equals(getattr(self,indexType).index):
-        return getattr(self,indexType).copy()
+def test_idx_eq(mindex,idx,copy=True,
+                err1=KeyError('Failed to index the dataframe "mindex" using "idx"'),
+                err2=IndexError('The indexed new dataframe does not have the same shape as the original "mindex" dataframe. Possibly there are duplicate values in the index of the "mindex" dataframe.')):
+    # equal index even if order is not the same.
+    if mindex.index.equals(idx):
+        return mindex.copy() if copy else mindex
     try:
-        new_idx = getattr(self,indexType).loc[idx]
-        if new_idx.shape[0] == getattr(self,indexType).shape[0]:
+        new_idx = mindex.loc[idx]
+        if new_idx.shape[0] == mindex.shape[0]:
             return new_idx
         else:
-            raise NotImplementedError
+            raise err2
     except:
-        raise NotImplementedError
+        raise err1
+
+def align_index_in_call(idx,self,indexType:IndexType):
+    return test_idx_eq(getattr(self,indexType),idx,
+                       err1=NotImplementedError,
+                       err2=NotImplementedError)
+
+
+def get_index_name(indexType,arr):
+    for i in range(1000):
+        name = f'primary_{indexType}' if i==0 else f'primary_{indexType}_{i}'
+        if name not in arr:
+            return name
 
 
 def groupby(self,indexType:IndexType|MIndexType,by=None,keep_primary=False,
@@ -145,11 +160,8 @@ def groupby(self,indexType:IndexType|MIndexType,by=None,keep_primary=False,
         if by is None or (isinstance(by,list) and None in by) or keep_primary:
             ms = self.loc[:]
             if getattr(self,indexType).index.name is None:
-                for i in range(1000):
-                    name = f'primary_index' if i==0 else f'primary_index_{i}'
-                    if name not in getattr(self,indexType).columns:
-                        getattr(ms,indexType).index.name = name
-                        break
+                getattr(ms,indexType).index.name = \
+                    get_index_name('index',getattr(self,indexType).columns)
             primary_name = getattr(ms,indexType).index.name
             setattr(ms,indexType,getattr(ms,indexType).reset_index())
             # ms.index = self.index.reset_index()

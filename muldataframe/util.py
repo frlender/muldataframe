@@ -50,14 +50,15 @@ def concat(arr:list[md.MulSeries|md.MulDataFrame],axis=0):
 
 def pivot_table(*args,**kwargs):
     df = pd.pivot_table(*args,**kwargs)
+    # print(df)
     if isinstance(df.index,pd.MultiIndex):
         new_idx = df.index.to_frame(index=False)
     else:
-        new_idx = None
+        new_idx = pd.DataFrame(index=df.index)
     if isinstance(df.columns,pd.MultiIndex):
         new_cols = df.columns.to_frame(index=False)
     else:
-        new_cols = None
+        new_cols = pd.DataFrame(index=df.columns)
     
     return md.MulDataFrame(df.values,
                            index=new_idx,
