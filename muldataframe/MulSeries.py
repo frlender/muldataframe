@@ -6,26 +6,63 @@ import numpy as np
 import muldataframe as md
 # import muldataframe.ValFrameBase as vfb
 import muldataframe.ValFrameBase as vfb
+import tabulate
+tabulate.PRESERVE_WHITESPACE = True
 
 #TODO: query for mulseries and muldataframe
 
 
 class MulSeries:
+    '''
+    A multi-index series with the index bing a pandas dataframe and the name a pandas series. It also has a underlying values series that is not directly accessible. Its values attribute is the same as that of the values series.
+
+    Parameters
+    -----------
+    data: pandas.Series, array-like, Iterable, dict, or scalar value
+        either a pandas Series or the same kind of data argument as required in the pandas Series constructor. The values series is constructed from the data argument.
+    index: pandas.DataFrame
+        If index is None, construct an empty index dataframe using the index of the values series as its index.
+    name: pandas.Series, str
+        If name is of str type, construct an empty name series using name as its name. If name is None, construct an empty name series using the name of the values series as its name.
+    index_init: Literal['override'] | Literal['align']
+        The option determins how to align the index of the index dataframe to the index of the values series. In the override mode, the index of the index dataframe overrides the index of the values series. This mode requires both indices' lengths to be the same. The align mode is only effective if the data argumnet implies an index and the index argument is not None. In this mode, the index of the index dataframe is used to index the values series constructed from the data argument. The resulting series is used as the final values series. It requires the index of the values series being uinque and the labels of the index dataframe's index exist in the index of the values series. By default, the constructor prioritizes the align mode if possible.
+    index_copy: bool
+        whether to create a copy of the index argument.
+    name_copy: bool
+        whether to create a copy of the name argument.
+
+    Examples:
+    ----------
+    Construct a mulseries. See that the index of the dataframe and the index of the values series are the same and the name of the name series and the name of the values series are the same.
+    
+    >>> import muldataframe as md
+    >>> index = pd.DataFrame([[1,2],[3,5],[3,6]],
+                            index=['a','b','b'],
+                            columns=['x','y'])
+    >>> name = pd.Series(['g','h'],index=['e','f'], name='cc')
+    >>> ms = md.MulSeries([1,2,3],index=index,name=name)
+    >>> ms
+    (3,)     e   g
+             f   h
+                cc
+    -------  ------
+       x  y     cc
+    a  1  2  a   1
+    b  3  5  b   2
+    b  3  6  b   3
+    '''
     # force pandas to return NotImplemented when using ops like +, * 
     # in the case of pd.Series + MulSeries.
     __pandas_priority__ = 10000
-    def __init__(self,ss,index:pd.DataFrame=None,
-                 name:pd.Series|str=None,
+    def __init__(self,data,index:pd.DataFrame=None,
+                 name:pd.Series|str|None=None,
                  index_init:cmm.IndexInit=None,
                  index_copy=True,name_copy=True):
+       
+        ss = data
         
         if isinstance(ss,dict):
             ss = pd.Series(ss)
-
-        if not isinstance(name,pd.Series):
-            name = pd.Series([],name=name)
-        else:
-            name = name.copy() if name_copy else name
 
         if isinstance(ss,pd.Series):
             index_init = 'align' if index_init is None else index_init
@@ -33,24 +70,60 @@ class MulSeries:
             index_init = 'override' if index_init is None else index_init
             ss = pd.Series(ss)
 
+        if not isinstance(name,pd.Series):
+            if isinstance(name,str):
+                name = pd.Series([],name=name)
+            else:
+                name = pd.Series([],name=ss.name)
+        else:
+            name = name.copy() if name_copy else name
+
         ss, index = cmm.setMulIndex(ss,'index',index,index_init,index_copy)
 
+        
         self.index = index
+        '''
+        The index dataframe. Use :doc:`MulSeries.mindex <mindex>` as an alias for this attribute.
+        '''
         self.name = name
+        '''
+        The name series. Use :doc:`MulSeries.mname <mname>` as an alias for this attribute.
+        '''
         # print(hasattr(self, 'index'))
         self.__ss = ValSeries(self,ss) # private
 
         self.iloc = cmm.Accessor(self._xloc_get_factory('iloc'),
                              self._xloc_set_factory('iloc'))
+        '''
+        Position-based indexing. It is the same as the `Series.iloc <https://pandas.pydata.org/docs/reference/api/pandas.Series.iloc.html>`_ attribute of the values series except that it returns a MulSeries with the index dataframe properly sliced. If the return value is a scalar, it returns the scalar.
+        '''
         self.loc = cmm.Accessor(self._xloc_get_factory('loc'),
                             self._xloc_set_factory('loc'))
+        '''
+        Label-based indexing. It is the same as the `Series.loc <https://pandas.pydata.org/docs/reference/api/pandas.Series.loc.html>`_ attribute of the values series except that it returns a MulSeries with the index dataframe properly sliced. If the return value is a scalar, it returns the scalar.
+        '''
         self.mloc = cmm.Accessor(self._mloc_get,
                              self._mloc_set)
+        '''
+        Flexible hierachical indexing on the index dataframe. The slicer can be an array or a dict. 
+        
+        If an array is used, its length should less than or equal to the index dataframe's columns length. The hierarchical indexing order is from the leftmost column to the rightmost. Use ``None`` as ``:`` in the array to select all elements in a column.
+
+        If a dict is used, its keys should be the column names of the index dataframe and its values the slicers on the columns. The hierachical indexing order is the insertion order of the keys in the dict. Although Python does not guanrantee the insertion order, it is generally preserved in most cases. Use the `OrderedDict <https://docs.python.org/3/library/collections.html#collections.OrderedDict>`_ class if you are really concerned about it.
+
+
+        '''
 
     def __repr__(self):
-        return 'ss:\n'+self.__ss.__repr__()+'\n\nindex:\n'+\
-                self.index.__repr__()+'\n\nname:\n'+\
-                self.name.__repr__()
+        cols = cmm.fmtSeries(self.name)
+        vals = cmm.fmtSeries(self.ds)
+        return tabulate.tabulate(
+                [[str(self.index),str(vals)]],
+               headers=[self.shape,
+                        cmm.fmtColStr(cols,False)])
+        # return 'ss:\n'+self.__ss.__repr__()+'\n\nindex:\n'+\
+        #         self.index.__repr__()+'\n\nname:\n'+\
+        #         self.name.__repr__()
     
     def __getattr__(self,name):
         if name == 'values':
@@ -100,6 +173,62 @@ class MulSeries:
             return self.ds.equals(other.ds) and self.index.equals(other.index) and self.name.equals(other.name)
 
     def copy(self):
+        '''
+        Create a deep copy of the mulseries.
+
+        Parameters
+        ----------
+        data : array-like, Iterable, dict, or scalar value
+            Contains data stored in Series. If data is a dict, argument order is
+            maintained. Unordered sets are not supported.
+        index : array-like or Index (1d)
+            Values must be hashable and have the same length as `data`.
+            Non-unique index values are allowed. Will default to
+            RangeIndex (0, 1, 2, ..., n) if not provided. If data is dict-like
+            and index is None, then the keys in the data are used as the index. If the
+            index is not None, the resulting Series is reindexed with the index values.
+        dtype : str, numpy.dtype, or ExtensionDtype, optional
+            Data type for the output Series. If not specified, this will be
+            inferred from `data`.
+            See the :ref:`user guide <basics.dtypes>` for more usages.
+        name : Hashable, default None
+            The name to give to the Series.
+        copy : bool, default False
+            Copy input data. Only affects Series or 1d ndarray input. See examples.
+
+        See Also
+        --------
+        DataFrame : Two-dimensional, size-mutable, potentially heterogeneous tabular data.
+        Index : Immutable sequence used for indexing and alignment.
+
+        Notes
+        -----
+        Please reference the :ref:`User Guide <basics.series>` for more information.
+            Return a list of random ingredients as strings.
+
+        Examples
+        ^^^^^^^^^
+        Constructing Series from a dictionary with an Index specified
+
+        >>> d = {"a": 1, "b": 2, "c": 3}
+        >>> ser = pd.Series(data=d, index=["a", "b", "c"])
+        >>> ser
+        a   1
+        b   2
+        c   3
+        dtype: int64
+
+        The keys of the dictionary match with the Index values, hence the Index
+        values have no effect.
+
+        >>> d = {"a": 1, "b": 2, "c": 3}
+        >>> ser = pd.Series(data=d, index=["x", "y", "z"])
+        >>> ser
+        x   NaN
+        y   NaN
+        z   NaN
+        dtype: float64
+        '''
         return MulSeries(self.__ss.copy().values,
                          index=self.index,
                          name=self.name.copy())
@@ -174,6 +303,15 @@ class MulSeries:
             
     def reset_index(self,columns=None, drop=False, 
                     inplace=False, col_fill=''):
+        '''
+        Return a list of random ingredients as strings.
+
+        :param kind: Optional "kind" of ingredients.
+        :type kind: list[str] or None
+        :raise lumache.InvalidKindError: If the kind is invalid.
+        :return: The ingredients list.
+        :rtype: list[str]
+        '''
         if columns is None:
             if self.mindex.index.name is None:
                 indexName = cmm.get_index_name('index',

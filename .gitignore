@@ -5,3 +5,4 @@ muldataframe/test/__pycache__
 circular/
 **/__pycache__/
 .coverage
+doc/build

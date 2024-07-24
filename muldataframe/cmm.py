@@ -251,6 +251,27 @@ class MulGroupBy(Generic[G,M]):
         res = md.concat(arr,axis=axis)
         return res
 
+def fmtSeries(ss:pd.Series):
+    if ss.shape[0] == 0:
+        return str(ss)
+    else:
+        df = pd.DataFrame(ss)
+        if ss.name is None:
+            df.columns = [None]
+        return df
+
+
+def fmtColStr(df:pd.DataFrame,transpose=True):
+    if df.shape[0] == 0 or df.shape[1] == 0:
+        return str(df)
+    else:
+        if transpose:
+            df = df.transpose()
+        xs = str(df)
+        lines = xs.split('\n')
+        lines = lines[1:]+[lines[0]]
+        return '\n'.join(lines)
+
 
 # funcs = ['mean','median','std','var','sum','prod','count','first','last','mad']
 # funcs = ['mean','median','std','var','sum','prod']

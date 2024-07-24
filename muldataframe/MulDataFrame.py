@@ -4,6 +4,8 @@ from typing import Any
 import muldataframe.cmm as cmm
 import muldataframe.ValFrameBase as vfb
 import numpy as np
+import tabulate
+tabulate.PRESERVE_WHITESPACE = True
 # import muldataframe.util as util
 
 class MulDataFrame:
@@ -14,18 +16,15 @@ class MulDataFrame:
         both_init:cmm.IndexInit=None,
         index_copy=True,
         columns_copy=True,
-        both_copy=True):
+        both_copy=None):
 
-        if index_init is None and columns_init is None:
+        if both_init is not None:
             index_init = both_init
             columns_init = both_init
         
-        if both_copy:
-            index_copy = True
-            columns_copy = True
-        else:
-            index_copy = False
-            columns_copy = False
+        if both_copy is not None:
+            index_copy = both_copy
+            columns_copy = both_copy
 
         if isinstance(data,pd.DataFrame) or \
             isinstance(data,dict):
@@ -69,9 +68,11 @@ class MulDataFrame:
         return self.__df is not None
 
     def __repr__(self):
-        return 'df:\n'+self.__df.__repr__()+'\n\nindex:\n'+\
-                self.index.__repr__()+'\n\ncolumns:\n'+\
-                self.columns.__repr__()
+        return tabulate.tabulate(
+                [[str(self.index),str(self.ds)]],
+               headers=[self.shape,
+                        cmm.fmtColStr(self.mcols)])
+
     
     def __getattr__(self,name):
         if name == 'values':
@@ -332,11 +333,7 @@ class MulDataFrame:
         if mloc:
             subset = self._mloc_to_primary(mloc,self.mcolumns)
 
-        # print(super(ValDataFrame,self.__df).index)
-        # self.__df.index = list(range(self.shape[0]))
-        # self.__df.columns = list(range(self.shape[1]))
-        # self.__df.index = self.__df.index
-        # self.__df.columns = self.__df.columns
+       
         bidx = self.__df.duplicated(subset=subset,keep=keep)
         bidx_keep = ~bidx
         new_df = self.__df.loc[bidx_keep]
@@ -384,13 +381,6 @@ class MulDataFrame:
                         index=new_mindex,columns=new_mcols,
                         index_copy=False,columns_copy=False)
             
-            # if new_df.index.equals(self.mindex.index) and \
-            #     new_df.columns.equals(self.mcolumns.index):
-            #     return MulDataFrame(new_df.values,
-            #             index=self.mindex.copy(),
-            #             columns=self.mcolumns.copy())
-            # else:
-            #     return NotImplemented
         elif isinstance(new_df,pd.Series):
             if new_df.shape[0] == self.shape[0] and (
                 new_df.shape[0] != self.shape[1] or 
