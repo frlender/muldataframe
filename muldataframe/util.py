@@ -15,7 +15,7 @@ def aggregate_index(i:int,index:pd.DataFrame,index_agg:cmm.IndexAgg) -> pd.DataF
         index_one.index = final_index
         # print('====',index,'\n',index_same,'\n',index_one)
         return index_one
-    elif index_agg in ['array','tuple']:
+    elif index_agg in ['list','tuple']:
         index_vals = []
         for col in index.columns:
             vals = index[col].unique()

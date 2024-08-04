@@ -108,6 +108,7 @@ def test_get_set_attr():
 
 def test_get_setitem():
     md,index,columns = get_data()
+    print('\n',md)
     ss = md['c']
     assert ss.index.equals(md.mindex)
     assert isinstance(ss,MulSeries)
@@ -386,7 +387,7 @@ def test_groupby():
     assert eq(md2.values,[[1,2],[8,9.5]])
     assert md2.index.shape == (2,2)
 
-    md2 = md.groupby(agg_mode='array').mean(axis=0)
+    md2 = md.groupby(agg_mode='list').mean(axis=0)
     assert eq(md2.values,[[1,2],[8,9.5]])
     assert md2.index.shape == (2,3)
     assert eq(md2.index.iloc[1,1],[3,5])

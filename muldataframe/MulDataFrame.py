@@ -9,6 +9,53 @@ tabulate.PRESERVE_WHITESPACE = True
 # import muldataframe.util as util
 
 class MulDataFrame:
+    '''
+    A multi-index dataframe with the index and the columns being pandas dataframes. It also has an underlying values dataframe that is not directly accessible. Its values are the same as the values of the values dataframe.
+
+    Parameters
+    -----------
+    data : pandas.DataFrame, ndarray (structured or homogeneous), Iterable, dict
+        either a pandas DataFrame or the same kind of data argument as required in the `pandas.DataFrame constructor <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame>`_. The values dataframe is constructed from the data argument.
+    index : pandas.DataFrame
+        If index is None, construct an empty index dataframe using the index of the values dataframe as its index.
+    columns : pandas.DataFrame
+        If columns is None, construct an empty columns dataframe using the columns of the values dataframe as its index.
+    index_init : Literal['override'] | Literal['align']
+        The option determins how to align the index of the index dataframe to the index of the values dataframe. In the override mode, the index of the index dataframe overrides the index of the values dataframe. This mode requires both indices' lengths to be the same. The align mode is only effective if the data argumnet implies an index and the index argument is not None. In this mode, the index of the index dataframe is used to index the values dataframe constructed from the data argument. The resulting dataframe is used as the final values dataframe. It requires the index of the values dataframe being uinque and the labels of the index dataframe's index exist in the index of the values dataframe. By default, the constructor prioritizes the align mode if possible.
+    columns_init : Literal['override'] | Literal['align']
+        The option determins how to align the index of the columns dataframe to the columns of the values dataframe. In the override mode, the index of the columns dataframe overrides the columns of the values dataframe. This mode requires both indices' lengths to be the same. The align mode is only effective if the data argumnet implies a columns index and the columns argument is not None. In this mode, the index of the columns dataframe is used to index the columns of the values dataframe constructed from the data argument. The resulting dataframe is used as the final values dataframe. It requires the columns of the values dataframe being uinque and the labels of the columns dataframe's index exist in the columns of the values dataframe. By default, the constructor prioritizes the align mode if possible.
+    both_init : Literal['override'] | Literal['align']
+        It overrides index_init and columns_init with the same value.
+    index_copy : bool
+        whether to create a copy of the index argument.
+    columns_copy : bool
+        whether to create a copy of the columns argument.
+    both_copy : bool
+        It overrides index_copy and columns_copy with the same value.
+
+    Examples
+    ----------
+    Construct a muldataframe. Notice that the index of the index muldataframe and the index of the values muldataframe are the same and the index of the columns dataframe and the columns of the values dataframe are the same.
+
+    >>> import pandas as pd
+    >>> import muldataframe as md
+    >>> index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                     index=['a','b','b'],
+                     columns=['x','y'])
+    >>> columns = pd.DataFrame([[5,7],[3,6]],
+                        index=['c','d'],
+                        columns=['f','g'])
+    >>> md = MulDataFrame([[1,2],[8,9],[8,10]],index=index,columns=columns)
+    >>> md
+    (3, 2)    g  7   6
+              f  5   3
+                 c   d
+    --------  ---------
+       x  y      c   d
+    a  1  2   a  1   2
+    b  3  6   b  8   9
+    b  5  6   b  8  10
+    '''
     __pandas_priority__ = 10000
     def __init__(self, data, index=None, columns=None,
         index_init:cmm.IndexInit=None, 
@@ -73,6 +120,13 @@ class MulDataFrame:
                headers=[self.shape,
                         cmm.fmtColStr(self.mcols)])
 
+    def __iter__(self):
+        '''
+        Iterate over info axis of the values dataframe.
+
+        Use `DataFrame.__iter__ <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.__iter__.html>`_ of the values dataframe under the hood. 
+        '''
+        return self.__df.__iter__()
     
     def __getattr__(self,name):
         if name == 'values':
@@ -266,7 +320,9 @@ class MulDataFrame:
             isinstance(col_fill,pd.DataFrame):
             if isinstance(col_fill,pd.Series):
                 col_fill = pd.DataFrame(col_fill).transpose()
-            col_fill = cmm.test_idx_eq(col_fill,cols)
+            col_fill = cmm.test_idx_eq(col_fill,cols,copy=False)
+            col_fill = cmm.test_idx_eq(col_fill,self.columns.columns,
+                    indexType='columns',copy=False)
             if inplace:
                 self.mcols = mcols
             else:

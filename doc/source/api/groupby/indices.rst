@@ -1,29 +1,26 @@
-{title}
-===========================================
+MulGroupBy
+=========================
 
 .. toctree::
    :maxdepth: 1
    :caption: Constructor:
 
-{constructor}
-
+   mulgroupby
 
 .. toctree::
    :maxdepth: 1
    :caption: Attributes:
 
-{attributes}
-
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Indexing:
-
-{indexing}
-
+   parent
+   by
+   index_agg
+   indexType
+   groupBy
 
 .. toctree::
    :maxdepth: 1
    :caption: Methods:
 
-{methods}
+   __iter__
+   call
+

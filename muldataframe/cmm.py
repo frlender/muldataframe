@@ -12,7 +12,7 @@ import numpy as np
 IndexType = Literal['index'] | Literal['columns']
 MIndexType = Literal['mindex'] | Literal['mcolumns']
 IndexInit = Literal['override'] | Literal['align']
-IndexAgg = Literal['same_only'] | Literal['array'] | Literal['tuple']
+IndexAgg = Literal['same_only'] | Literal['list'] | Literal['tuple']
 
 
 class Accessor:
@@ -120,18 +120,26 @@ def checkSetIdxValue(self,name,value):
         value.shape[0] != self.shape[shapeIdx]:
         raise IndexError(f"The assigned value must be a dataframe with its index length being the same as the {className}'s {name} length.")
 
-def test_idx_eq(mindex,idx,copy=True,
+def test_idx_eq(mindex,idx,indexType='index',
+                copy=True,
                 err1=KeyError('Failed to index the dataframe "mindex" using "idx"'),
                 err2=IndexError('The indexed new dataframe does not have the same shape as the original "mindex" dataframe. Possibly there are duplicate values in the index of the "mindex" dataframe.')):
     # equal index even if order is not the same.
-    if mindex.index.equals(idx):
+    if getattr(mindex,indexType).equals(idx):
         return mindex.copy() if copy else mindex
     try:
-        new_idx = mindex.loc[idx]
-        if new_idx.shape[0] == mindex.shape[0]:
-            return new_idx
+        if indexType == 'index':
+            new_idx = mindex.loc[idx]
+            if new_idx.shape[0] == mindex.shape[0]:
+                return new_idx
+            else:
+                raise err2
         else:
-            raise err2
+            new_idx = mindex.loc[:,idx]
+            if new_idx.shape[1] == mindex.shape[1]:
+                return new_idx
+            else:
+                raise err2
     except:
         raise err1
 
@@ -152,10 +160,8 @@ def groupby(self,indexType:IndexType|MIndexType,by=None,keep_primary=False,
             agg_mode:IndexAgg='same_only',**kwargs):
         index_agg = agg_mode
         if isinstance(self,md.MulSeries):
-            G = pd.core.groupby.SeriesGroupBy
             M = md.MulSeries
         else:
-            G = pd.core.groupby.DataFrameGroupBy
             M = md.MulDataFrame
         if by is None or (isinstance(by,list) and None in by) or keep_primary:
             ms = self.loc[:]
@@ -170,25 +176,45 @@ def groupby(self,indexType:IndexType|MIndexType,by=None,keep_primary=False,
             elif isinstance(by,list) and None in by:
                 by = [primary_name if b is None else b for b in by]
             groupBy = getattr(ms,indexType).groupby(by,**kwargs)
-            return MulGroupBy[G,M](ms,indexType,by,groupBy,index_agg)
+            return MulGroupBy[M](ms,indexType,by,groupBy,index_agg)
         else:
             groupBy = getattr(self,indexType).groupby(by)
-            return MulGroupBy[G,M](self,indexType,by,groupBy,index_agg)
+            return MulGroupBy[M](self,indexType,by,groupBy,index_agg)
 
-G = TypeVar('G')
+# G = TypeVar('G')
 M = TypeVar('M')
 
-class MulGroupBy(Generic[G,M]):
-    def __init__(self,parent,indexType:IndexType|MIndexType,
-                 by, groupBy:G, #pd.core.groupby.SeriesGroupBy,
+class MulGroupBy(Generic[M]):
+    def __init__(self,parent:M,indexType:IndexType|MIndexType,
+                 by, groupBy:pd.core.groupby.DataFrameGroupBy,
                  index_agg:IndexAgg):
         self.groupBy = groupBy
+        '''
+        A pandas.api.typing.DataFrameGroupBy object.
+        '''
         self.parent = parent
+        '''
+        The parent MulSeries or MulDataFrame that calls the grouby method.
+        '''
         self.by = by
+        '''
+        Same as the by argument in the parent's groupby method
+        '''
         self.index_agg = index_agg
+        '''
+        Same as the by agg_mode argument in the parent's groupby method
+        '''
         self.indexType = indexType
+        '''
+        The index dataframe used to group by the parent.
+
+        It must be 'index' if parent is a MulSeries. It can be 'index' or 'columns' if parent is a MulDataFrame.
+        '''
     
     def __iter__(self):
+        '''
+        Make the MulGroupBy object iterable.
+        '''
         if self.indexType in ['index','mindex','midx']:
             for k,v in self.groupBy.indices.items():
                 yield k, self.parent.iloc[v]
@@ -204,8 +230,20 @@ class MulGroupBy(Generic[G,M]):
             return func
         
     def call(self,func,*args,**kwargs):
+        '''
+        Call a function on the MulGroupBy object.
+
+        Similar to `MulSeries.call <../mulseries/call>`_ and `MulDataFrame.call <../muldataframe/call>`_, it applies a function to the MulSeries or MulDataFrame in each group and concateate the results into a final MulSeries or MulDataFrame.
+
+        Parameters:
+        ------------
+        func: function
+            A function applied to the MulSeries or MulDataFrame in each group.
+        use_mul: bool, default False
+            An optional argument to determine how :code:`func` is applied. If False, for the MulSeries or MulDataFrame in each group, use :code:`MulSeries.call(func)` or :code:`MulDataFrame.call(func)` to compute the results. The object passed to :code:`func` will be its values Series or DataFrame. If True, use :code:`func(MulSeries)` or :code:`func(MulDataFrame)` to compute the results.
+        '''
         # print('******',G,M,type(G),)
-        G_class, M_class = self.__orig_class__.__args__
+        M_class = self.__orig_class__.__args__[0]
         res = None
         use_mul = False
         arr = []
@@ -269,7 +307,7 @@ def fmtColStr(df:pd.DataFrame,transpose=True):
             df = df.transpose()
         xs = str(df)
         lines = xs.split('\n')
-        lines = lines[1:]+[lines[0]]
+        lines = lines[1:][::-1]+[lines[0]]
         return '\n'.join(lines)
 
 

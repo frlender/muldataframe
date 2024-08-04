@@ -14,12 +14,12 @@ tabulate.PRESERVE_WHITESPACE = True
 
 class MulSeries:
     '''
-    A multi-index series with the index bing a pandas dataframe and the name a pandas series. It also has a underlying values series that is not directly accessible. Its values attribute is the same as that of the values series.
+    A multi-index series with the index being a pandas dataframe and the name a pandas series. It also has an underlying values series that is not directly accessible. Its values are the same as the values of the values series.
 
     Parameters
     -----------
     data: pandas.Series, array-like, Iterable, dict, or scalar value
-        either a pandas Series or the same kind of data argument as required in the pandas Series constructor. The values series is constructed from the data argument.
+        either a pandas Series or the same kind of data argument as required in the `pandas Series constructor <https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series>`_. The values series is constructed from the data argument.
     index: pandas.DataFrame
         If index is None, construct an empty index dataframe using the index of the values series as its index.
     name: pandas.Series, str
@@ -33,8 +33,9 @@ class MulSeries:
 
     Examples:
     ----------
-    Construct a mulseries. See that the index of the dataframe and the index of the values series are the same and the name of the name series and the name of the values series are the same.
+    Construct a mulseries. Notice that the index of the dataframe and the index of the values series are the same and the name of the name series and the name of the values series are the same.
     
+    >>> import pandas as pd
     >>> import muldataframe as md
     >>> index = pd.DataFrame([[1,2],[3,5],[3,6]],
                             index=['a','b','b'],
@@ -42,8 +43,8 @@ class MulSeries:
     >>> name = pd.Series(['g','h'],index=['e','f'], name='cc')
     >>> ms = md.MulSeries([1,2,3],index=index,name=name)
     >>> ms
-    (3,)     e   g
-             f   h
+    (3,)     f   h
+             e   g
                 cc
     -------  ------
        x  y     cc
@@ -95,22 +96,56 @@ class MulSeries:
         self.iloc = cmm.Accessor(self._xloc_get_factory('iloc'),
                              self._xloc_set_factory('iloc'))
         '''
-        Position-based indexing. It is the same as the `Series.iloc <https://pandas.pydata.org/docs/reference/api/pandas.Series.iloc.html>`_ attribute of the values series except that it returns a MulSeries with the index dataframe properly sliced. If the return value is a scalar, it returns the scalar.
+        Position-based indexing. It is the same as the `Series.iloc <https://pandas.pydata.org/docs/reference/api/pandas.Series.iloc.html>`_ of the values series except that it returns a MulSeries with the index dataframe properly sliced. If the return value is a scalar, it returns the scalar.
         '''
         self.loc = cmm.Accessor(self._xloc_get_factory('loc'),
                             self._xloc_set_factory('loc'))
         '''
-        Label-based indexing. It is the same as the `Series.loc <https://pandas.pydata.org/docs/reference/api/pandas.Series.loc.html>`_ attribute of the values series except that it returns a MulSeries with the index dataframe properly sliced. If the return value is a scalar, it returns the scalar.
+        Label-based indexing. It is the same as `Series.loc <https://pandas.pydata.org/docs/reference/api/pandas.Series.loc.html>`_ of the values series except that it returns a MulSeries with the index dataframe properly sliced. If the return value is a scalar, it returns the scalar.
         '''
         self.mloc = cmm.Accessor(self._mloc_get,
                              self._mloc_set)
         '''
-        Flexible hierachical indexing on the index dataframe. The slicer can be an array or a dict. 
+        Flexible hierachical indexing on the index dataframe. The slicer can be an array or a dict. Check introduction to mloc ??? for detailed usage.
         
-        If an array is used, its length should less than or equal to the index dataframe's columns length. The hierarchical indexing order is from the leftmost column to the rightmost. Use ``None`` as ``:`` in the array to select all elements in a column.
+        If an array is used, its length should be less than or equal to the columns length of the index dataframe. The hierarchical indexing order is from the leftmost column to the rightmost. Use ``None`` as ``:`` in the array to select all elements in a column.
 
         If a dict is used, its keys should be the column names of the index dataframe and its values the slicers on the columns. The hierachical indexing order is the insertion order of the keys in the dict. Although Python does not guanrantee the insertion order, it is generally preserved in most cases. Use the `OrderedDict <https://docs.python.org/3/library/collections.html#collections.OrderedDict>`_ class if you are really concerned about it.
 
+        Examples
+        ---------
+        Array indexing:
+
+        >>> import muldataframe as md
+        >>> index = pd.DataFrame([['a','b','c'],
+                                  [ 'g','b','f'],
+                                  [ 'b','g','h']],
+                           columns=['x','y','y'])
+        >>> name = pd.Series(['a','b'],index=['e','f'],name='cc')
+        >>> ms = md.MulSeries([1,2,3],index=index,name=name)
+        >>> ms.mloc[[None,'b']]
+        (2,)        e   a
+                    f   b
+                       cc
+        ----------  ------
+           x  y  y     cc
+        0  a  b  c  0   1
+        1  g  b  f  1   2
+        >>> ms.mloc[['g',None,['h','f']]]
+        2
+
+        Dictionary indexing:
+
+        >>> ms.mloc[{'y':['c','h'],'x':['b','a']}]
+        (2,)        e   a
+                    f   b
+                       cc
+        ----------  ------
+           x  y  y     cc
+        2  b  g  h  2   3
+        0  a  b  c  0   1
+
+        Note in the above example that if the index dataframe's columns have duplicate names, use the **last** column for indexing.
 
         '''
 
@@ -167,6 +202,21 @@ class MulSeries:
         return self.equals(other)
     
     def equals(self,other):
+        '''
+        Test whether two MulSeries are the same elements.
+
+        Two MulSeries are equal only if their index dataframes, name series and value dataframes are equal. Use `Series.equals <https://pandas.pydata.org/docs/reference/api/pandas.Series.equals.html>`_ and `DataFrame.equals <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.equals.html#>`_ under the hood.
+
+        Parameters
+        ------------
+        other : object
+            The other object to be compared with the MulSeries. If the other is not a MulSeries, returns False.
+
+        Returns
+        ----------
+        bool
+            True for equality.
+        '''
         if not isinstance(other,MulSeries):
             return False
         else:
@@ -175,64 +225,19 @@ class MulSeries:
     def copy(self):
         '''
         Create a deep copy of the mulseries.
-
-        Parameters
-        ----------
-        data : array-like, Iterable, dict, or scalar value
-            Contains data stored in Series. If data is a dict, argument order is
-            maintained. Unordered sets are not supported.
-        index : array-like or Index (1d)
-            Values must be hashable and have the same length as `data`.
-            Non-unique index values are allowed. Will default to
-            RangeIndex (0, 1, 2, ..., n) if not provided. If data is dict-like
-            and index is None, then the keys in the data are used as the index. If the
-            index is not None, the resulting Series is reindexed with the index values.
-        dtype : str, numpy.dtype, or ExtensionDtype, optional
-            Data type for the output Series. If not specified, this will be
-            inferred from `data`.
-            See the :ref:`user guide <basics.dtypes>` for more usages.
-        name : Hashable, default None
-            The name to give to the Series.
-        copy : bool, default False
-            Copy input data. Only affects Series or 1d ndarray input. See examples.
-
-        See Also
-        --------
-        DataFrame : Two-dimensional, size-mutable, potentially heterogeneous tabular data.
-        Index : Immutable sequence used for indexing and alignment.
-
-        Notes
-        -----
-        Please reference the :ref:`User Guide <basics.series>` for more information.
-            Return a list of random ingredients as strings.
-
-        Examples
-        ^^^^^^^^^
-        Constructing Series from a dictionary with an Index specified
-
-        >>> d = {"a": 1, "b": 2, "c": 3}
-        >>> ser = pd.Series(data=d, index=["a", "b", "c"])
-        >>> ser
-        a   1
-        b   2
-        c   3
-        dtype: int64
-
-        The keys of the dictionary match with the Index values, hence the Index
-        values have no effect.
-
-        >>> d = {"a": 1, "b": 2, "c": 3}
-        >>> ser = pd.Series(data=d, index=["x", "y", "z"])
-        >>> ser
-        x   NaN
-        y   NaN
-        z   NaN
-        dtype: float64
         '''
         return MulSeries(self.__ss.copy().values,
                          index=self.index,
                          name=self.name.copy())
     
+    def __iter__(self):
+        '''
+        Return an iterator of the values.
+
+        Use `Series.__iter__ <https://pandas.pydata.org/docs/reference/api/pandas.Series.__iter__.html#pandas.Series.__iter__>`_ of the values series under the hood. 
+        '''
+        return self.__ss.__iter__()
+
     def __getitem__(self,key):
         new_ss = self.__ss[key]
         if(isinstance(new_ss,pd.Series)):
@@ -291,7 +296,10 @@ class MulSeries:
             isinstance(col_fill,pd.DataFrame):
             if isinstance(col_fill,pd.Series):
                 col_fill = pd.DataFrame(col_fill).transpose()
-            col_fill = cmm.test_idx_eq(col_fill,cols)
+            col_fill = cmm.test_idx_eq(col_fill,cols,copy=False)
+
+            col_fill = cmm.test_idx_eq(col_fill,self.name.index,indexType='columns',copy=False)
+            
             mcols = pd.DataFrame(self.name).transpose()
             mcols = pd.concat([col_fill,mcols],axis=0)
             return mcols
@@ -304,13 +312,56 @@ class MulSeries:
     def reset_index(self,columns=None, drop=False, 
                     inplace=False, col_fill=''):
         '''
-        Return a list of random ingredients as strings.
+        Reset the columns of the index dataframe as the columns of the mulseries.
 
-        :param kind: Optional "kind" of ingredients.
-        :type kind: list[str] or None
-        :raise lumache.InvalidKindError: If the kind is invalid.
-        :return: The ingredients list.
-        :rtype: list[str]
+        Parameters
+        ----------
+        columns : column name(s) of the index dataframe.
+            If this argument is None, reset the index of the index dataframe. If the name of this index is None, it will be named as "primary_index". If "primary_index" exists in the primary columns, it will be named as "primary_index_1" and so on.
+        drop : bool, default False
+            Just reset the index, without inserting index dataframe's column(s) as column(s) in the new MulDataFrame.
+        inplace : bool, default False
+            Modify the MulSeries in place (do not create a new object).
+        col_fill : object, default ''
+            A scalar, a pandas Series or a pandas DataFrame to fill in the columns dataframe of the new MulDataFrame for the inserted values. If the argument is a Series or a DataFrame, its index should align with the index of the mulseries' name (which is a pandas series) in the same way as the align mode in the :doc:`constructor <mulseries>`.
+
+        Returns
+        --------
+        MulSeries, MulDataFrame or None
+            The return value behaves similarly to `Series.reset_index <https://pandas.pydata.org/docs/reference/api/pandas.Series.reset_index.html>`_.
+        
+        Examples
+        ---------
+        >>> import muldataframe as md
+        >>> index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                     index=['a','b','b'],
+                     columns=['x','y'])
+        >>> name = pd.Series([5,7],
+                        index=['f','g'],
+                        name='c')
+        >>> ms = MulSeries([1,8,9],index=index,name=name)
+        >>> ms.reset_index()
+        (3, 2)    g                7
+                  f                5
+                    primary_index  c
+        --------  --------------------
+           x  y     primary_index  c
+        0  1  2   0             a  1
+        1  3  6   1             b  8
+        2  5  6   2             b  9
+
+        Add a col_fill:
+
+        >>> ss_fill = pd.Series([8,9],index=['g','f'],name='primary_index'))
+        >>> ms.reset_index(col_fill=ss_fill)
+        (3, 2)    g             8  7
+                  f             9  5
+                    primary_index  c
+        --------  ---------------------
+           x  y     primary_index  c
+        0  1  2   0             a  1
+        1  3  6   1             b  8
+        2  5  6   2             b  9
         '''
         if columns is None:
             if self.mindex.index.name is None:
@@ -342,7 +393,7 @@ class MulSeries:
                 mcols = self.__fill_cols(col_fill,mselect.columns,
                                          False)
                 df = pd.concat([mselect,self.ds],axis=1)
-                print(df,mcols)
+                # print(df,mcols)
                 return md.MulDataFrame(df.values,index=mkeep,columns=mcols,
                               index_copy=False,columns_copy=False)
             else:
@@ -351,6 +402,45 @@ class MulSeries:
                 return self2
 
     def call(self,func,*args,**kwargs):
+        '''
+        Apply a function to the values series and returns the result as a scalar or a MulSeries with the index dataframe properly sliced.
+
+        Parameters:
+        -------------
+        func : function
+            A function applied to the values series of the MulSeries. Currently, the method only supports functions that return a scalar value or a pandas series with the same primary index (order can be different if there are no duplicate values in the primary index).
+        \*args : positional arguments to the function
+            The MulSeries is the 1st positional argument to the function. \*args are from the 2nd positional argument onwards.
+        \*\*kwargs : keyword arguments to the function
+            keyword arguments to the function.
+
+        Returns
+        -----------
+        scalar or MulSeries
+            If the return value is a MulSeries, it should have the same index dataframe as the caller.
+
+
+        Examples
+        ----------
+        >>> import muldataframe as md
+        >>> import numpy as np
+        >>> index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                     index=['a','b','b'],
+                     columns=['x','y'])
+        >>> name = pd.Series([5,7],
+                        index=['f','g'],
+                        name='c')
+        >>> ms = MulSeries([1,8,9],index=index,name=name)
+        >>> ms.call(np.power,2)
+        (3,)      g  7
+                  f  5
+                     c
+        -------  ------
+           x  y      c
+        a  1  2  a   1
+        b  3  6  b  64
+        b  5  6  b  81
+        '''
         # if 'unsafe' in kwargs and kwargs['unsafe']:
         # consider to change to self.ss to improve safety?
         args = list(args)
@@ -406,11 +496,91 @@ class MulSeries:
             return res
 
     def groupby(self,by=None,keep_primary=False,agg_mode:cmm.IndexAgg='same_only'):
+        '''
+        Group MulSeries by its index dataframe using a mapper or the index dataframe's columns.
+
+        The function uses the `DataFrame.groupby(axis=0) <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.groupby.html#pandas.DataFrame.groupby>`_ method of the index dataframe to create groups under the hood. The values of the MulSeries are grouped accordingly. It returns a :doc:`MulGroupBy <../groupby/indices>` object that contains information about the groups.
+
+        Parameters
+        ------------
+        by : None, mapping, function, label, pd.Grouper or list of such
+            Please refers to `DataFrame.groupby <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.groupby.html#pandas.DataFrame.groupby>`_ for detailed information on this argument. The difference to the :code:`by` argument in DataFrame.groupby is that if it is None, uses the primary index to group the MulSeries.
+        keep_primary : bool, default False
+            Whether to keep primary index in the grouped index dataframes. If True, the primary index will be reset as a column and kept in the grouped dataframes.
+        agg_mode : 'same_only', 'list','tuple'
+            Determine how to aggregate column values in the index dataframe that are not the same in each group when calls numpy functions on or using the :doc:`call <../groupby/indices>` method of the MulGroupBy object.'same_only': only keep columns that have the same values within each group. 'list': put columns that do not have the same values within a group into a list. 'tuple': similar to 'list', but put them into a tuple.
+
+        Returns
+        -----------
+        MulGroupBy
+            A `MulGroupBy <../groupby/call>`_ object that contains information about the groups.
+                
+
+        Examples
+        ------------
+        >>> import muldataframe as md
+        >>> import pandas as pd
+        >>> index = pd.DataFrame([['a','b','c'],
+                                  ['g','b','f'],
+                                  ['b','g','h']],
+                        columns=['x','y','z'])
+        >>> name = pd.Series(['a','b'],index=['e','f'],name='cc')
+        >>> ms = MulSeries([1,2,3],index=index,name=name)
+        >>> for key, group in ms.groupby('y'):
+        ...     print(key,'\\n',group)
+        ...     break
+        b
+        (2,)        f  b
+                    e  a
+                       cc
+        ----------  ------
+           x  y  z     cc
+        0  a  b  c  0   1
+        1  g  b  f  1   2
+        >>> ms.groupby('y').sum()
+        (2,)    f   b
+                e   a
+                   cc
+        ------  ------
+           y       cc
+        0  b    0   3
+        1  g    1   3
+        >>> ms.groupby('y',agg_mode='list').sum()
+        (2,)                  f   b
+                              e   a
+                                 cc
+        --------------------  ------
+                x  y       z     cc
+        0  [a, g]  b  [c, f]  0   3
+        1       b  g       h  1   3
+        '''
         return cmm.groupby(self,'index',by=by,
                            keep_primary=keep_primary,agg_mode=agg_mode)
     
     
     def drop_duplicates(self,keep='first', inplace=False):
+        '''
+        Return MulSeries with duplicate values removed. 
+        
+        It is similar to `Series.drop_duplciates <https://pandas.pydata.org/docs/reference/api/pandas.Series.drop_duplicates.html>`_ except it returns a MulSeries with the index dataframe properly sliced.
+
+        Parameters
+        -----------
+        keep: {'first', 'last', False}, default 'first'
+            Method to handle dropping duplicates:
+
+            - 'first' : Drop duplicates except for the first occurrence.
+            - 'last' : Drop duplicates except for the last occurrence.
+            - ``False`` : Drop all duplicates.
+        inplace: bool, default False
+            If True, performs operation inplace and returns None.
+        
+        Returns:
+        ----------
+        MulSeries or None
+            If inplace=True, returns None. Otherwise, returns a MulSeries. The MulSeries' index dataframe is properly sliced according to removed values.
+
+        '''
         bidx = self.__ss.duplicated(keep=keep)
         bidx_keep = ~bidx
         new_ss = self.__ss.loc[bidx_keep]

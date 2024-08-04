@@ -223,13 +223,14 @@ def test_mloc_get():
                         [ 'g','b','f'],
                         [ 'b','g','h']],
                         columns=['x','y','y'])
-    name = name = pd.Series(['a','b'],index=['e','f'],name='cc')
+    name = pd.Series(['a','b'],index=['e','f'],name='cc')
     ms = MulSeries([1,2,3],index=index,name=name)
     # print(type(ms.mloc[[None,'b']].values))
     assert eq(ms.mloc[:].values,[1,2,3])
 
     assert eq(ms.mloc[[None,'b']].values,
                       [1,2])
+    # print('\n',ms.mloc[[None,'b']])
     assert eq(ms.mloc[[None,None,['h','f']]].values,[3,2])
 
     assert ms.mloc[['g',None,['h','f']]] == 2
@@ -252,6 +253,7 @@ def test_mloc_get():
     assert eq(ms.mloc[[['g','a'],None,['c','f']]].values,[1,2])
 
     assert eq(ms.mloc[{'y':['c','h'],'x':['b','a']}].values,[3,1])
+    # print('\n',ms.mloc[{'y':['c','h'],'x':['b','a']}])
     assert eq(ms.mloc[{'y':['h','c'],'x':['a','b']}].values,[1,3])
 
     index = pd.DataFrame([['a','b','c'],
@@ -317,12 +319,20 @@ def get_data2():
 def test_reset_index():
     md,index,name = get_data()
     md2 = md.reset_index()
-    # print(md2)
+    # print('\n',md2)
     assert md2.mindex.shape == md.mindex.shape
     assert eq(md2.mindex.index.values,[0,1,2])
     assert eq(md2.mcols.index, ['primary_index','c'])
     assert eq(md2.mcols.iloc[0],['',''])
     assert md2.mcols.shape == (2,2)
+
+    ss_fill = pd.Series(
+        [8,9],index=['g','f'],name='primary_index')
+    msx = md.reset_index(col_fill=ss_fill)
+    # print('\n',msx)
+    assert msx.columns.columns.equals(md.name.index)
+    assert eq(msx.columns.loc['primary_index'].values,[9,8])
+
 
     with pytest.raises(TypeError):
         md.reset_index(inplace=True,col_fill=0)
@@ -387,6 +397,14 @@ def test_groupby():
     name = name = pd.Series(['a','b'],index=['e','f'],name='cc')
     ms = MulSeries([1,2,3],index=index,name=name)
 
+    # for key, group in ms.groupby('y'):
+    #     print(key,'\n',group)
+    #     break
+
+    # print('\n',ms.groupby('y').sum())
+    # print('\n',ms.groupby('y',agg_mode='list').sum())
+
+
     assert eq(ms.groupby('y').sum().values,[3,3])
     ms2 = ms.copy()
     ms2.index.set_index('x',inplace=True)
@@ -395,13 +413,13 @@ def test_groupby():
     assert eq(res.index.index.values,[0,1])
     assert eq(res.index.columns.values,['y'])
 
-    res = ms2.groupby('y',agg_mode='array').mean()
+    res = ms2.groupby('y',agg_mode='list').mean()
     assert eq(res.index.columns.values,['y','z'])
     assert eq(res.index['z'].values[0],['c','f'])
 
 
     res = ms2.groupby('y',keep_primary=True,
-                      agg_mode='array').mean()
+                      agg_mode='list').mean()
     assert eq(res.index.index.values,[0,1])
     assert eq(res.index.columns.values,['x','y','z'])
     assert eq(res.index['z'].values[0],['c','f'])

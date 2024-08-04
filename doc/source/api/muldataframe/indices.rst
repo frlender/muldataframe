@@ -1,28 +1,28 @@
-MulSeries
-========================
+MulDataFrame
+===========================
 
 .. toctree::
    :maxdepth: 1
    :caption: Constructor:
 
-   mulseries
+   muldataframe
 
 .. toctree::
    :maxdepth: 1
    :caption: Attributes:
 
    index
-   name
+   columns
    values
-   ss
+   df
    ds
    shape
    mindex
-   mname
+   mcolumns
 
 .. toctree::
    :maxdepth: 1
-   :caption: indexing:
+   :caption: Indexing:
 
    iloc
    loc

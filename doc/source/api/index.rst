@@ -6,5 +6,7 @@ API reference
    :maxdepth: 2
 
    mulseries/indices.rst
+   muldataframe/indices.rst
+   groupby/indices.rst
 
 
