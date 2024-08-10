@@ -10,7 +10,7 @@ import tabulate
 tabulate.PRESERVE_WHITESPACE = True
 
 #TODO: query for mulseries and muldataframe
-
+#TODO: func can be a string for MulGroupBy.call, using methods of pandas.groupby class.
 
 class MulSeries:
     '''
@@ -116,6 +116,7 @@ class MulSeries:
         ---------
         Array indexing:
 
+        >>> import pandas as pd
         >>> import muldataframe as md
         >>> index = pd.DataFrame([['a','b','c'],
                                   [ 'g','b','f'],
@@ -177,7 +178,11 @@ class MulSeries:
                              index=self.index.index.copy(),
                              name=self.name.name,
                              copy=False)
-        elif hasattr(np,name) and hasattr(getattr(np,name),'__call__'):
+        elif cmm.is_pandas_method(self,name):
+            def func(*args,**kwargs):
+                return self.call(name,*args,**kwargs)
+            return func
+        elif cmm.is_numpy_function(name):
             def func(*args,**kwargs):
                 return self.call(getattr(np,name),*args,**kwargs)
             return func
@@ -203,7 +208,7 @@ class MulSeries:
     
     def equals(self,other):
         '''
-        Test whether two MulSeries are the same elements.
+        Test whether two MulSeries are the same.
 
         Two MulSeries are equal only if their index dataframes, name series and value dataframes are equal. Use `Series.equals <https://pandas.pydata.org/docs/reference/api/pandas.Series.equals.html>`_ and `DataFrame.equals <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.equals.html#>`_ under the hood.
 
@@ -337,8 +342,7 @@ class MulSeries:
                      index=['a','b','b'],
                      columns=['x','y'])
         >>> name = pd.Series([5,7],
-                        index=['f','g'],
-                        name='c')
+                        index=['f','g'], name='c')
         >>> ms = MulSeries([1,8,9],index=index,name=name)
         >>> ms.reset_index()
         (3, 2)    g                7
@@ -401,14 +405,20 @@ class MulSeries:
                 self2.index = mkeep
                 return self2
 
+
+    
+
     def call(self,func,*args,**kwargs):
         '''
-        Apply a function to the values series and returns the result as a scalar or a MulSeries with the index dataframe properly sliced.
+        Apply a function to the values series and returns the result as a scalar or a MulSeries with the index dataframe properly arranged.
 
         Parameters:
         -------------
-        func : function
-            A function applied to the values series of the MulSeries. Currently, the method only supports functions that return a scalar value or a pandas series with the same primary index (order can be different if there are no duplicate values in the primary index).
+        func : function or str
+            A function applied to the values series of the MulSeries. The function should return a scalar, or a pandas Series. 
+            
+            - If a Series is returned, it must have the same index as the primary index (order can be different if there are no duplicate values in the primary index).
+            - If ``func`` is a string, it must be a valid method name of ``pandas.Series``. The method should saftisfy the same requirement as above.
         \*args : positional arguments to the function
             The MulSeries is the 1st positional argument to the function. \*args are from the 2nd positional argument onwards.
         \*\*kwargs : keyword arguments to the function
@@ -422,6 +432,7 @@ class MulSeries:
 
         Examples
         ----------
+        >>> import pandas as pd
         >>> import muldataframe as md
         >>> import numpy as np
         >>> index = pd.DataFrame([[1,2],[3,6],[5,6]],
@@ -450,9 +461,15 @@ class MulSeries:
         if len(args) > 0 and hasattr(md,'__pandas_priority__') \
             and args[0].__pandas_priority__ > self.__pandas_priority__:
             return NotImplemented
-        # print(func,self,args)
+        
         self.__ss._update_super_index()
-        res = func(self.__ss,*args,**kwargs)
+        if isinstance(func,str):
+            if cmm.is_pandas_method(self,func):
+                res = getattr(self.__ss,func)(*args,**kwargs)
+            else:
+                raise ValueError(f'If func is a string, it must be a valid method name pandas.Series')
+        else:
+            res = func(self.__ss,*args,**kwargs)
         errMsg = f'Currently, {self.__class__} only supports operators or functions that return a scalar value or a pandas series with the same primary index (order can be different if there are no duplicate values) in its .call() method.'
         # else:
         #     res = func(self.ss,*args,**kwargs)
@@ -513,7 +530,7 @@ class MulSeries:
         Returns
         -----------
         MulGroupBy
-            A `MulGroupBy <../groupby/call>`_ object that contains information about the groups.
+            A :doc:`MulGroupBy <../groupby/indices>` object that contains information about the groups.
                 
 
         Examples
@@ -566,13 +583,13 @@ class MulSeries:
 
         Parameters
         -----------
-        keep: {'first', 'last', False}, default 'first'
+        keep : {'first', 'last', False}, defaul t 'first'
             Method to handle dropping duplicates:
 
             - 'first' : Drop duplicates except for the first occurrence.
             - 'last' : Drop duplicates except for the last occurrence.
             - ``False`` : Drop all duplicates.
-        inplace: bool, default False
+        inplace : bool, default False
             If True, performs operation inplace and returns None.
         
         Returns:

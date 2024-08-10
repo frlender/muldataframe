@@ -8,6 +8,8 @@ import tabulate
 tabulate.PRESERVE_WHITESPACE = True
 # import muldataframe.util as util
 
+#TODO itercols
+
 class MulDataFrame:
     '''
     A multi-index dataframe with the index and the columns being pandas dataframes. It also has an underlying values dataframe that is not directly accessible. Its values are the same as the values of the values dataframe.
@@ -96,7 +98,13 @@ class MulDataFrame:
 
 
         self.index = index
+        '''
+        The index dataframe. Use :doc:`MulDataFrame.mindex <mindex>` as an alias for this attribute.
+        '''
         self.columns = columns
+        '''
+        The columns dataframe. Use :doc:`MulDataFrame.mcolumns <mcolumns>` as an alias for this attribute.
+        '''
         self.__df = ValDataFrame(self,df)
 
         # super(ValDataFrame,self.__df).index and self.__df.index
@@ -106,10 +114,66 @@ class MulDataFrame:
 
         self.iloc = cmm.Accessor(self._xloc_get_factory('iloc'),
                              self._xloc_set_factory('iloc'),2)
+        '''
+        Position-based indexing. It is the same as the `DataFrame.iloc <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.iloc.html>`_ of the values dataframe except that it returns a MulDataFrame with the index and the columns dataframes properly sliced. If the return value is a scalar, it returns the scalar.
+        '''
         self.loc = cmm.Accessor(self._xloc_get_factory('loc'),
                              self._xloc_set_factory('loc'),2)
+        '''
+        Label-based indexing. It is the same as the `DataFrame.loc <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.iloc.html>`_ of the values dataframe except that it returns a MulDataFrame with the index and the columns dataframes properly sliced. If the return value is a scalar, it returns the scalar.
+        '''
         self.mloc = cmm.Accessor(self._mloc_get,
                              self._mloc_set,2)
+        '''
+        Flexible hierachical indexing on the index and columns dataframes. The row or the columns slicer can be an array or a dict. Check introduction to mloc ??? for detailed usage.
+        
+        If an array is used, its length should be less than or equal to the columns length of the index or the columns dataframe. The hierarchical indexing order is from the leftmost column to the rightmost. Use ``None`` as ``:`` in the array to select all elements in a column.
+
+        If a dict is used, its keys should be the column names of the index or the columns dataframe and its values the slicers on the columns. The hierachical indexing order is the insertion order of the keys in the dict. Although Python does not guanrantee the insertion order, it is generally preserved in most cases. Use the `OrderedDict <https://docs.python.org/3/library/collections.html#collections.OrderedDict>`_ class if you are really concerned about it.
+
+        Examples
+        ---------
+        Array indexing:
+
+        >>> import pandas as pd
+        >>> import muldataframe as md
+        >>> index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                     index=['a','b','b'],
+                     columns=['x','y'])
+        >>> columns = pd.DataFrame([[5,7],[3,6]],
+                        index=['c','d'],
+                        columns=['f','g'])
+        >>> md = MulDataFrame([[1,2],[8,9],[8,10]],index=index,columns=columns)
+        >>> ms.mloc[[None,6],[5]]
+        (2,)      g  7   
+                  f  5   
+                     c   
+        --------  -----
+           x  y      c   
+        b  3  6   b  8   
+        b  5  6   b  8  
+        
+
+        Dictionary indexing:
+
+        >>> md.mloc[:,{'g':6}]
+        (3,)      g  6
+                  f  3
+                     d
+        -------  ------
+           x  y      d
+        a  1  2  a   2
+        b  3  6  b   9
+        b  5  6  b  10
+        >>> md.mloc[:,{'g':[6]}].shape
+        (3,1)
+
+        Value assignment:
+
+        >>> md.mloc[[None,2],{'g':6}] = 3
+        >>> md.iloc[0,1]
+        3
+        '''
         
     def _hasVal(self):
         return self.__df is not None
@@ -147,7 +211,11 @@ class MulDataFrame:
                              index=self.index.index,
                              columns=self.columns.index,
                              copy=False)
-        elif hasattr(np,name) and hasattr(getattr(np,name),'__call__'):
+        elif cmm.is_pandas_method(self,name):
+            def func(*args,**kwargs):
+                return self.call(name,*args,**kwargs)
+            return func
+        elif cmm.is_numpy_function(name):
             def func(*args,**kwargs):
                 return self.call(getattr(np,name),*args,**kwargs)
             return func
@@ -171,6 +239,21 @@ class MulDataFrame:
         return self.equals(other)
     
     def equals(self,other):
+        '''
+        Test whether two MulDataFrames are the same.
+
+        Two MulDataFrames are equal only if their index dataframes, columns dataframes and value dataframes are equal. Use `DataFrame.equals <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.equals.html#>`_ under the hood.
+
+        Parameters
+        ------------
+        other : object
+            The other object to be compared with the MulDataFrame. If the other is not a MulDataFrame, returns False.
+
+        Returns
+        ----------
+        bool
+            True for equality.
+        '''
         if not isinstance(other,MulDataFrame):
             return False
         else:
@@ -179,12 +262,30 @@ class MulDataFrame:
                 self.columns.equals(other.columns)
 
     def copy(self):
+        '''
+        Create a deep copy of the MulDataFrame.
+        '''
         return MulDataFrame(self.__df.copy().values,
                              index=self.index,
                              columns=self.columns)
     
 
     def transpose(self,inplace=False):
+        '''
+        Transpose the MulDataFrame.
+
+        The index and the columns dataframes are swapped.
+
+        Parameters
+        -------------
+        inplace : bool, default False
+            Whether to transpose inplace or return a new transposed muldataframe.
+        
+        Returns
+        -----------
+        None or MulDataFrame
+            The method returns None if ``inplace=True``. Otherwise, returns a new transposed muldataframe.
+        '''
         if inplace:
             __df = self.__df
             self.__df = None
@@ -293,6 +394,57 @@ class MulDataFrame:
         
 
     def set_index(self,keys=None,mloc=None,drop=True,inplace=False):
+        '''
+        Add columns of MulDataFrame to its index dataframe.
+
+        The columns to be added to the index dataframe can be specified by the primary columns or by :doc:`mloc <mloc>` indexing. When a muldataframe's column (a MulSeries object) is added to the index dataframe, only its primary name is kept. Its name series is lost.
+
+        Parameters
+        -------------
+        keys : label or array-like or list of labels/arrays
+            Labels in the primary columns. It behave similarly to the keys parameter in `DataFrame.set_index <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.set_index.html>`_. It cannot be ``None`` if ``mloc`` is ``None``.
+        mloc : array or dict
+            Hierachical indexing used to select columns. check :doc:`mloc <mloc>` for possible values. This parameter is ignored if ``keys`` is not None. It cannot be ``None`` if ``keys`` is ``None``.
+        drop : bool, default True
+            Whether to delete columns to be added to the index dataframe.
+        inplace : bool, default False
+            Whether to modify the MulDataFrame inplace rather than creating a new one.
+        
+        Returns
+        --------
+        MulDataFrame or None
+            New MulDataFrame or None if ``inplace=True``.
+
+        Examples
+        ---------
+        >>> import pandas as pd
+        >>> import muldataframe as md
+        >>> index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                     index=['a','b','b'],
+                     columns=['x','y'])
+        >>> columns = pd.DataFrame([[5,7],[3,6]],
+                        index=['c','d'],
+                        columns=['f','g'])
+        >>> md = MulDataFrame([[1,2],[8,9],[9,10]],index=index,columns=columns)
+        >>> md.set_index('c')
+        (3, 1)      g   6
+                    f   3
+                        d
+        ----------  ------
+           x  y  c      d
+        a  1  2  1  a   2
+        b  3  6  8  b   9
+        b  5  6  8  b  10
+        >>> md2 = md.set_index(mloc={'g':6})
+        (3, 1)       g  7
+                     f  5
+                        c
+        -----------  ------
+           x  y   d     c
+        a  1  2   2  a  1
+        b  3  6   9  b  8
+        b  5  6  10  b  8
+        '''
         if keys is None and mloc is None:
             raise ValueError('one of the keys or the mloc argument must be set.')
         if keys is None and mloc is not None:
@@ -339,6 +491,59 @@ class MulDataFrame:
 
     def reset_index(self,columns=None, drop=False, 
                     inplace=False, col_fill=''):
+        '''
+        Reset the columns of the index dataframe as the columns of the MulDataFrame.
+
+        Parameters
+        ----------
+        columns : column name(s) of the index dataframe.
+            If this argument is None, reset the index of the index dataframe. If the name of this index is None, it will be named as "primary_index". If "primary_index" exists in the primary columns, it will be named as "primary_index_1" and so on.
+        drop : bool, default False
+            Just reset the index, without inserting index dataframe's column(s) as column(s) in the new MulDataFrame.
+        inplace : bool, default False
+            Modify the MulDataFrame in place (do not create a new object).
+        col_fill : object, default ''
+            A scalar, a pandas Series or a pandas DataFrame to fill in the columns dataframe of the new MulDataFrame (inplace=False) or the modified MulDataFrame (inplace=True) for the inserted values. If the argument is a Series or a DataFrame, its index should align with the columns of the muldataframe' columns dataframe in the same way as the align mode in the :doc:`constructor <muldataframe>`.
+
+        Returns
+        --------
+        MulDataFrame or None
+            The return value behaves similarly to `DataFrame.reset_index <https://pandas.pydata.org/docs/reference/api/pandas.Series.reset_index.html>`_.
+        
+        Examples
+        ---------
+        >>> import pandas as pd
+        >>> import muldataframe as md
+        >>> index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                     index=['a','b','b'],
+                     columns=['x','y'])
+        >>> columns = pd.DataFrame([[5,7],[3,6]],
+                        index=['c','d'],
+                        columns=['f','g'])
+        >>> md = MulDataFrame([[1,2],[8,9],[9,10]],index=index,columns=columns)
+        >>> md.reset_index()
+        (3, 2)    g                7  6
+                  f                5  3
+                    primary_index  c  d
+        --------  -----------------------
+           x  y     primary_index  c  d
+        0  1  2   0             a  1  2
+        1  3  6   1             b  8  9
+        2  5  6   2             b  9 10
+
+        Add a col_fill:
+
+        >>> ss_fill = pd.Series([8,9],index=['g','f'],name='primary_index'))
+        >>> md.reset_index(col_fill=ss_fill)
+        (3, 2)    g             8  7  6
+                  f             9  5  3
+                    primary_index  c  d
+        --------  ---------------------
+           x  y     primary_index  c  d
+        0  1  2   0             a  1  2
+        1  3  6   1             b  8  9
+        2  5  6   2             b  9 10
+        '''
         if columns is None:
             if self.mindex.index.name is None:
                 indexName = cmm.get_index_name('index',
@@ -384,9 +589,56 @@ class MulDataFrame:
 
     def drop_duplicates(self,subset=None,mloc=None,
                         keep='first',inplace=False):
+        '''
+        Return MulDataFrame with duplicate values removed. 
+        
+        It is similar to `DataFrame.drop_duplciates <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.drop_duplicates.html>`_ except it returns a MulDataFrame with the index dataframe properly sliced.
+
+        Parameters
+        -----------
+        subset : pirmary columns label or sequence of primary columns labels, optional
+            Only consider certain columns specified by the primary columns labels for identifying duplicates, by default use all of the columns.
+        mloc : array or dict
+            Only consider certain columns specified by the ``mloc`` Hierachical indexing for identifying duplicates. check :doc:`mloc <mloc>` for possible values. This parameter is ignored if ``keys`` is not None.
+        keep : {'first', 'last', False}, default 'first'
+            Method to handle dropping duplicates:
+
+            - 'first' : Drop duplicates except for the first occurrence.
+            - 'last' : Drop duplicates except for the last occurrence.
+            - ``False`` : Drop all duplicates.
+        inplace : bool, default False
+            If True, performs operation inplace and returns None.
+        
+        Returns
+        ----------
+        MulDataFrame or None
+            If inplace=True, returns None. Otherwise, returns a MulDataFrame. The new MulDataFrame' index dataframe is properly sliced according to removed values.
+        
+        Examples
+        ---------
+        >>> import pandas as pd
+        >>> import muldataframe as md
+        >>> index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                     index=['a','b','b'],
+                     columns=['x','y'])
+        >>> columns = pd.DataFrame([[5,7],[3,6]],
+                        index=['c','d'],
+                        columns=['f','g'])
+        >>> mf = md.MulDataFrame([[1,2],[8,9],[9,10]],index=index,columns=columns)
+        >>> mf.drop_duplicates(mloc={'g':7})
+        (2, 2)    g  7  6
+                  f  5  3
+                     c  d
+        --------  ---------
+           x  y      c  d
+        a  1  2   a  1  2
+        b  3  6   b  8  9
+
+        '''
         if subset is None and mloc is None:
-            raise ValueError('one of the subset or the mloc argument must be set.')
-        if mloc:
+            subset = self.columns.index
+            # raise ValueError('one of the subset or the mloc argument must be set.')
+        if subset is None and mloc:
             subset = self._mloc_to_primary(mloc,self.mcolumns)
 
        
@@ -410,10 +662,90 @@ class MulDataFrame:
                         index_copy=False)
     
     def iterrows(self):
+        '''
+        Iterate over MulDataFrame rows as (Series of index dataframe, MulSeries) pairs.
+
+        Yields:
+        --------
+        index : pandas.Series
+            A row in the index dataframe
+        data : MulSeries
+            A row in the MulDataFrame
+        
+        Examples
+        -----------
+        >>> import pandas as pd
+        >>> import muldataframe as md
+        >>> index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                     index=['a','b','b'],
+                     columns=['x','y'])
+        >>> columns = pd.DataFrame([[5,7],[3,6]],
+                        index=['c','d'],
+                        columns=['f','g'])
+        >>> mf = md.MulDataFrame([[1,2],[8,9],[9,10]],index=index,columns=columns)
+        >>> for k, row in mf.iterrows():
+        ...     print(k,'\\n',row)
+        ...     break
+        x    1
+        y    2
+        Name: a, dtype: int64 
+        (2,)     y  2
+                 x  1
+                    a
+        -------  ------
+           f  g     a
+        c  5  7  c  1
+        d  3  6  d  2
+
+        '''
         for i in range(self.shape[0]):
             yield (self.mindex.iloc[i], self.iloc[i])
     
     def call(self,func,*args,**kwargs):
+        '''
+        Apply a function to the values dataframe and returns the result as a scalar, a MulSeries or a MulDataFrame with the index and the columns dataframes properly arranged.
+
+        Parameters:
+        -------------
+        func : function or str
+            A function applied to the values dataframe of the MulDataFrame. The function should return a scalar, a pandas Series or a pandas DataFrame. 
+
+            - If a DataFrame is returned, its index and columns must be the same as the primary index and columns (order can be different if there are no duplicate values in the primary index and columns). 
+            - If a Series is returned, its index must be the same as either the primary index or the primary columns (same requirement as above). If the primary index and columns are the same, explicitly pass an ``axis`` argument to the function to determine the direction in which the funciton is applied to the values dataframe.
+            - If ``func`` is a string, it must be a valid method name of ``pandas.DataFrame``. The method should saftisfy the same requirement as above.
+        \*args : positional arguments to the function
+            The MulDataFrame is the 1st positional argument to the function. \*args are from the 2nd positional argument onwards.
+        \*\*kwargs : keyword arguments to the function
+            keyword arguments to the function.
+
+        Returns
+        -----------
+        scalar, MulSeries or MulDataFrame
+            If the return value is a MulDataFrame, it should have the same index and columns dataframes as the caller. If the return values is a MulSeries, its index dataframe should be the same as either the caller's index dataframe or its columns dataframe.
+
+
+        Examples
+        ----------
+        >>> import pandas as pd
+        >>> import muldataframe as md
+        >>> import numpy as np
+        >>> index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                     index=['a','b','b'],
+                     columns=['x','y'])
+        >>> columns = pd.DataFrame([[5,7],[3,6]],
+                        index=['c','d'],
+                        columns=['f','g'])
+        >>> mf = md.MulDataFrame([[1,3],[8,9],[9,10]],index=index,columns=columns)
+        >>> mf.call(np.power,2)
+        (3, 2)     g  7    6
+                   f  5    3
+                      c    d
+        --------  ----------
+           x  y       c    d
+        a  1  2   a   1    9
+        b  3  6   b  64   81
+        b  5  6   b  64  100
+        '''
         args = list(args)
         if len(args)>0 and (isinstance(args[0],md.MulSeries) or \
             isinstance(args[0],MulDataFrame)):
@@ -424,8 +756,15 @@ class MulDataFrame:
             return NotImplemented
 
         self.__df._update_super_index()
-        new_df = func(self.__df,*args,**kwargs)
-        func_name = func.__name__
+        if isinstance(func,str):
+            func_name = func
+            if cmm.is_pandas_method(self,func):
+                new_df = getattr(self.__df,func)(*args,**kwargs)
+            else:
+                raise ValueError(f'If func is a string, it must be a valid method name pandas.DataFrame')
+        else:
+            new_df = func(self.__df,*args,**kwargs)
+            func_name = func.__name__
         if isinstance(new_df,pd.DataFrame):
             if new_df.shape[0] != self.shape[0] or \
                 new_df.shape[1] != self.shape[1]:

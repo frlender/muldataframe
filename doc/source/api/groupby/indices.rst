@@ -1,6 +1,8 @@
 MulGroupBy
 =========================
 
+The class for the object returned by the :doc:`MulSeries.groupby <../mulseries/groupby>` or the :doc:`MulDataFrame.groupby,<../muldataframe/groupby>` method.
+
 .. toctree::
    :maxdepth: 1
    :caption: Constructor:

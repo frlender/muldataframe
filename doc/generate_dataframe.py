@@ -12,7 +12,9 @@ attrs_indexing = ['iloc','loc','mloc']
 dyn_attrs = {
    'values':
       '''
-      The values of the values dataframe. It is not a copy.
+      The values of the values dataframe.
+    
+      It is not a copy.
       ''',
    'df':
       '''
@@ -32,7 +34,7 @@ dyn_attrs = {
       '''
       Alias for :doc:`MulDataFrame.index <index>`.
       ''',
-   'mname':
+   'mcolumns':
       '''
       Alias for :doc:`MulDataFrame.columns <columns>`.
       '''
@@ -43,7 +45,7 @@ generate_attr_files(name,
     attrs_only+attrs_indexing,dyn_attrs,fld)
 
 
-methods = ['__iter__','copy','equals','reset_index','drop_duplicates','call','groupby']
+methods = ['__iter__','copy','equals','transpose','set_index','reset_index','query','iterrows','drop_duplicates','call','groupby','melt']
 
 generate_method_files(name,
     methods,fld)

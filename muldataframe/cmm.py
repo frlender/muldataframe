@@ -155,6 +155,16 @@ def get_index_name(indexType,arr):
         if name not in arr:
             return name
 
+def is_pandas_method(self,name):
+        if isinstance(self,md.MulSeries):
+            pdClass = pd.Series
+        else:
+            pdClass = pd.DataFrame
+        return hasattr(pdClass,name) and hasattr(getattr(pdClass,name),'__call__')
+    
+def is_numpy_function(name):
+    return hasattr(np,name) and hasattr(getattr(np,name),'__call__')
+
 
 def groupby(self,indexType:IndexType|MIndexType,by=None,keep_primary=False,
             agg_mode:IndexAgg='same_only',**kwargs):
@@ -190,7 +200,7 @@ class MulGroupBy(Generic[M]):
                  index_agg:IndexAgg):
         self.groupBy = groupBy
         '''
-        A pandas.api.typing.DataFrameGroupBy object.
+        A `pandas.api.typing.DataFrameGroupBy <https://pandas.pydata.org/docs/reference/groupby.html>`_ object.
         '''
         self.parent = parent
         '''
@@ -198,17 +208,17 @@ class MulGroupBy(Generic[M]):
         '''
         self.by = by
         '''
-        Same as the by argument in the parent's groupby method
+        Same as the ``by`` argument in the parent's groupby method
         '''
         self.index_agg = index_agg
         '''
-        Same as the by agg_mode argument in the parent's groupby method
+        Same as the by ``agg_mode`` argument in the parent's groupby method
         '''
         self.indexType = indexType
         '''
         The index dataframe used to group by the parent.
 
-        It must be 'index' if parent is a MulSeries. It can be 'index' or 'columns' if parent is a MulDataFrame.
+        It must be ``'index'`` if parent is a MulSeries. It can be ``'index'`` or ``'columns'`` if parent is a MulDataFrame.
         '''
     
     def __iter__(self):
@@ -240,7 +250,12 @@ class MulGroupBy(Generic[M]):
         func: function
             A function applied to the MulSeries or MulDataFrame in each group.
         use_mul: bool, default False
-            An optional argument to determine how :code:`func` is applied. If False, for the MulSeries or MulDataFrame in each group, use :code:`MulSeries.call(func)` or :code:`MulDataFrame.call(func)` to compute the results. The object passed to :code:`func` will be its values Series or DataFrame. If True, use :code:`func(MulSeries)` or :code:`func(MulDataFrame)` to compute the results.
+            An optional argument to determine how :code:`func` is applied. If False, :code:`MulSeries.call(func)` or :code:`MulDataFrame.call(func)` is used to compute the results in each group. The object passed to :code:`func` will be the MulSeries or the MulDataframe's values Series or DataFrame in each group. If True, :code:`func(MulSeries)` or :code:`func(MulDataFrame)` are used to compute the results.
+        
+        Returns
+        --------
+        MulSeries or MulDataFrame
+            The return value is a MulSeries if the MulGroupBy object's parent is a MulSeries. Otherwise, it is a MulDataFrame
         '''
         # print('******',G,M,type(G),)
         M_class = self.__orig_class__.__args__[0]

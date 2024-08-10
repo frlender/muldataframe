@@ -5,5 +5,7 @@ MulDataFrame.values
 
 .. attribute:: MulDataFrame.values
 
-      The values of the values dataframe. It is not a copy.
+      The values of the values dataframe.
+    
+      It is not a copy.
       

@@ -35,8 +35,13 @@ MulDataFrame
    __iter__
    copy
    equals
+   transpose
+   set_index
    reset_index
+   query
+   iterrows
    drop_duplicates
    call
    groupby
+   melt
 

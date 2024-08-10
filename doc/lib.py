@@ -28,10 +28,12 @@ def generate_method_files(title,methods:list[str],
             ff.write(f'{title}.{ax}\n{underlines}\n\n')
             ff.write(f'.. automethod:: muldataframe.{module}.{ax}\n')
 
-def generate_index(title,data,path):
+def generate_index(title,data,path,desc=None):
     with open(path,'w') as ff:
         underlines = '='*(len(title)+15)
         ff.write(f'{title}\n{underlines}\n\n')
+        if desc:
+            ff.write(f'{desc}\n\n')
         for item in data:
             desc = item[0]
             print(desc)

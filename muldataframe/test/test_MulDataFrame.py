@@ -108,7 +108,7 @@ def test_get_set_attr():
 
 def test_get_setitem():
     md,index,columns = get_data()
-    print('\n',md)
+    # print('\n',md)
     ss = md['c']
     assert ss.index.equals(md.mindex)
     assert isinstance(ss,MulSeries)
@@ -163,7 +163,7 @@ def test_op_call():
     assert md2.iloc[1,0] == 64
 
     md.iloc[1,0] = 6
-    assert md.mean() == 6
+    assert md.mean().mean() == 6
 
     md,index,columns = get_data()
     
@@ -203,6 +203,7 @@ def test_op_call():
 def test_mloc():
     md,index,columns = get_data()
     md2 = md.mloc[[None,6]]
+    # print('\n',md.mloc[[None,6],[5]])
     assert eq(md2.values,[[8,9],[8,10]])
     md2 = md.mloc[[[1,3],6]]
     assert eq(md2.values,[8,9])
@@ -229,6 +230,7 @@ def test_mloc():
     assert eq(md2.values,[8,8])
 
     md2 = md.mloc[[None,2],{'g':6}]
+    # print('\n',md.mloc[:,{'g':6}])
     assert md2 == 2
 
     md.mloc[[None,2],{'g':6}] = 3
@@ -244,6 +246,7 @@ def test_mloc():
 def test_set_index():
     md,index,columns = get_data()
     md2 = md.set_index('c')
+    # print('\n', md.set_index(mloc={'g':6}))
     assert md2.shape == (3,1)
     assert md2.mindex.shape == (3,3)
     assert eq(md2.mindex['c'], [1,8,8])
@@ -338,16 +341,26 @@ def test_drop_duplicates():
 
     md2 = md.drop_duplicates(mloc={'g':7})
     assert eq(md2.values,[[1,2],[8,9]])
+    print('\n',md2)
 
     md.drop_duplicates('c',inplace=True)
     assert eq(md.values,[[1,2],[8,9]])
 
-    with pytest.raises(ValueError):
-        md.drop_duplicates()
+    md,index,columns = get_data()
+    md2 = md.drop_duplicates()
+    assert md2.equals(md)
+    md.iloc[1,1] = 8
+    md.iloc[2,1] = 8
+    md2 = md.drop_duplicates()
+    assert md2.shape == (2,2)
+    assert eq(md2.values,[[1,2],[8,8]])
+    
 
 def test_iterrows():
     md,index,columns = get_data()
     for i, (k,row) in enumerate(md.iterrows()):
+        # print('=============')
+        # print(k,'\n',row)
         assert isinstance(row,MulSeries)
         if i == 0:
             assert k.name == 'a'

@@ -19,4 +19,5 @@ generate_method_files('MulGroupBy',
 data = [['Constructor',['mulgroupby']],
         ['Attributes',attrs],
         ['Methods',methods]]
-generate_index('MulGroupBy',data,f'{fld}/indices.rst')
+desc = 'The class for the object returned by the :doc:`MulSeries.groupby <../mulseries/groupby>` or the :doc:`MulDataFrame.groupby,<../muldataframe/groupby>` method.'
+generate_index('MulGroupBy',data,f'{fld}/indices.rst',desc)
