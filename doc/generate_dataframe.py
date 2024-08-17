@@ -7,7 +7,7 @@ name = 'MulDataFrame'
 attrs_only = ['index','columns',
          'values','df','ds','shape',
          'mindex','mcolumns']
-attrs_indexing = ['iloc','loc','mloc']
+attrs_indexing = ['iloc','loc','mloc','nloc']
 
 dyn_attrs = {
    'values':

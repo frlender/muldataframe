@@ -61,7 +61,7 @@ def _mloc_idx(key,df):
         if len(key) > df.shape[0]:
             raise IndexError(f'Too many indices. There should be at most {df.shape[0]} indices.')
         for i, idx in enumerate(key):
-            if idx is not None:
+            if idx is not ...:
                 ss = df.iloc[:,i]
                 ss.index = list(range(df.shape[0]))
                 col_nx = ss.loc[nx]
@@ -77,7 +77,34 @@ def _mloc_idx(key,df):
             col_nx = colx.loc[nx]
             nx = _mloc_idx_each(nx,col_nx,idx)
     return nx
-    
+
+
+def _nloc_idx(key:dict,df):
+    nx = list(range(df.shape[0]))
+    for k, idx in key.items():
+        colx = df.iloc[:,k]
+        colx.index = list(range(df.shape[0]))
+        col_nx = colx.loc[nx]
+        nx = _mloc_idx_each(nx,col_nx,idx)
+    return nx
+
+
+# def _n2m_key(df,key:dict):
+#     key2 = {}
+#     max_pos = 0
+#     for k,v in key.items():
+#         if not isinstance(k,int):
+#             raise ValueError(f"The keys of a dict in nloc indexing can only be integers.{k} found.")
+#         pos = df.shape[1]+k if k<0 else k
+#         key2[pos] = v
+#         if max_pos < pos:
+#             max_pos = pos
+#     if max_pos >= df.shape[1]:
+#         raise ValueError("The position index must be smaller than the index dataframe's columns' length")
+#     key3 = [...]*(max_pos+1)
+#     for k,v in key2.items():
+#         key3[k] = v
+#     return key3
 
 def checkAlign(label,ss_shape,index_shape):
     if ss_shape > index_shape:

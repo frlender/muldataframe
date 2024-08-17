@@ -27,6 +27,7 @@ MulDataFrame
    iloc
    loc
    mloc
+   nloc
 
 .. toctree::
    :maxdepth: 1

@@ -9,6 +9,7 @@ tabulate.PRESERVE_WHITESPACE = True
 # import muldataframe.util as util
 
 #TODO itercols
+#TODO operators like __add__ add to the __getattr___
 
 class MulDataFrame:
     '''
@@ -125,15 +126,15 @@ class MulDataFrame:
         self.mloc = cmm.Accessor(self._mloc_get,
                              self._mloc_set,2)
         '''
-        Flexible hierachical indexing on the index and columns dataframes. The row or the columns slicer can be an array or a dict. Check introduction to mloc ??? for detailed usage.
+        Flexible hierachical indexing on the index and columns dataframes. The row or the columns slicer can be a list or a dict. Check introduction to mloc ??? for detailed usage.
         
-        If an array is used, its length should be less than or equal to the columns length of the index or the columns dataframe. The hierarchical indexing order is from the leftmost column to the rightmost. Use ``None`` as ``:`` in the array to select all elements in a column.
+        If a list is used, its length should be less than or equal to the columns length of the index or the columns dataframe. The hierarchical indexing order is from the leftmost column to the rightmost. Use ``...`` as ``:`` in the list to select all elements in a column.
 
-        If a dict is used, its keys should be the column names of the index or the columns dataframe and its values the slicers on the columns. The hierachical indexing order is the insertion order of the keys in the dict. Although Python does not guanrantee the insertion order, it is generally preserved in most cases. Use the `OrderedDict <https://docs.python.org/3/library/collections.html#collections.OrderedDict>`_ class if you are really concerned about it.
+        If a dict is used, its keys should be the column names of the index or the columns dataframe and its values the slicers on the columns. The hierachical indexing order is the insertion order of the keys in the dict. Although Python does not guanrantee the insertion order, it is preserved in most cases. Use the `OrderedDict <https://docs.python.org/3/library/collections.html#collections.OrderedDict>`_ class if you are really concerned about it.
 
         Examples
         ---------
-        Array indexing:
+        List indexing:
 
         >>> import pandas as pd
         >>> import muldataframe as md
@@ -144,7 +145,7 @@ class MulDataFrame:
                         index=['c','d'],
                         columns=['f','g'])
         >>> md = MulDataFrame([[1,2],[8,9],[8,10]],index=index,columns=columns)
-        >>> ms.mloc[[None,6],[5]]
+        >>> ms.mloc[[..., 6],[5]]
         (2,)      g  7   
                   f  5   
                      c   
@@ -170,11 +171,44 @@ class MulDataFrame:
 
         Value assignment:
 
-        >>> md.mloc[[None,2],{'g':6}] = 3
+        >>> md.mloc[[..., 2],{'g':6}] = 3
         >>> md.iloc[0,1]
         3
         '''
+        self.nloc = cmm.Accessor(self._nloc_get,
+                             self._nloc_set,2)
+        '''
+        Flexible hierachical indexing on the index and columns dataframes using numeric positions. The row or the columns slicer can be a list or a dict. 
         
+        If a list is used, it behaves exactly like :doc:`mloc`.
+
+        If a dict is used, it behaves similarly to :doc:`mloc` except that instead of using column names as keys, it uses the numeric positions of the columns as keys.
+
+        Examples
+        ---------
+        Dictionary indexing:
+
+        >>> import pandas as pd
+        >>> import muldataframe as md
+        >>> index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                     index=['a','b','b'],
+                     columns=['x','y'])
+        >>> columns = pd.DataFrame([[5,7],[3,6]],
+                        index=['c','d'],
+                        columns=['f','g'])
+        >>> md.mloc[:,{1:6}]
+        (3,)      g  6
+                  f  3
+                     d
+        -------  ------
+           x  y      d
+        a  1  2  a   2
+        b  3  6  b   9
+        b  5  6  b  10
+        >>> md.mloc[:,{1:[6]}].shape
+        (3,1)
+        '''
+
     def _hasVal(self):
         return self.__df is not None
 
@@ -365,7 +399,7 @@ class MulDataFrame:
             getattr(self.__df,attr)[idx,col] = values
         return _xloc_set
     
-    def _mloc(self,key):
+    def _mloc2pos(self,key):
         idx, col = self._get_indices(key)
         if idx == slice(None):
             nx_idx = idx
@@ -378,14 +412,40 @@ class MulDataFrame:
         return nx_idx, nx_col
     
     def _mloc_get(self,key):
-        nx_idx, nx_col = self._mloc(key)
+        nx_idx, nx_col = self._mloc2pos(key)
         return self.iloc[nx_idx,nx_col]
     
     def _mloc_set(self,key,value):
-        nx_idx, nx_col = self._mloc(key)
+        nx_idx, nx_col = self._mloc2pos(key)
         self.iloc[nx_idx,nx_col] = value
-
     
+    def _nloc2pos(self,key):
+        idx, col = self._get_indices(key)
+        if isinstance(idx,dict):
+            nx_idx = cmm._nloc_idx(idx,self.mindex)
+        elif idx == slice(None):
+            nx_idx = idx
+        else:
+            nx_idx = cmm._mloc_idx(idx,self.mindex)
+
+        if isinstance(col,dict):
+            nx_col = cmm._nloc_idx(col,self.mcolumns)
+        elif col == slice(None):
+            nx_col = col
+        else:
+            nx_col = cmm._mloc_idx(col,self.mcolumns)
+        return nx_idx, nx_col
+    
+
+    def _nloc_get(self,key):
+        nx_idx, nx_col = self._nloc2pos(key)
+        return self.iloc[nx_idx,nx_col]
+    
+    def _nloc_set(self,key,value):
+        nx_idx, nx_col = self._nloc2pos(key)
+        self.iloc[nx_idx,nx_col] = value
+    
+
     @classmethod
     def _mloc_to_primary(cls,key,mindex):
         nx = cmm._mloc_idx(key,mindex)
@@ -797,6 +857,71 @@ class MulDataFrame:
 
     def groupby(self,by=None,axis=0,agg_mode:cmm.IndexAgg='same_only',
                 keep_primary=False,sort=True):
+        '''
+        Group MulDataFrame by its index or columns dataframe using a mapper or the index/columns dataframe's columns.
+
+        The function uses the `DataFrame.groupby <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.groupby.html#pandas.DataFrame.groupby>`_ method of the index or columns dataframe to create groups under the hood. The values of the MulDataFrame are grouped accordingly. It returns a :doc:`MulGroupBy <../groupby/indices>` object that contains information about the groups.
+
+        Parameters
+        ------------
+        by : None, mapping, function, label, pd.Grouper or list of such
+            Please refers to `DataFrame.groupby <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.groupby.html#pandas.DataFrame.groupby>`_ for detailed information on this argument. Its difference to the :code:`by` argument in ``DataFrame.groupby`` is that if it is None, uses the primary index (if ``axis==0``) or the primary columns (if ``axis==1``) to group the MulDataFrame.
+        axis : 0 or 1, default 0
+            Whether to group the MulDataFrame by its index dataframe (if ``axis==0``) or by its columns dataframe (if ``axis==1``).
+        keep_primary : bool, default False
+            Whether to keep primary index or columns in the index or columns dataframe in each group. If ``True``, the primary index or columns will be reset as a column and kept in the index or columns dataframe in each group.
+        agg_mode : 'same_only', 'list','tuple', default to 'same only'
+            Determine how to aggregate column values in the index or columns dataframe that are not the same in each group when calling numpy functions on or using the :doc:`call <../groupby/indices>` method of the MulGroupBy object.
+            
+            - ``'same_only'``: only keep columns that have the same values within each group. 
+            - ``'list'``: put columns that do not have the same values within a group into a list. 
+            - ``'tuple'``: similar to 'list', but put them into a tuple.
+
+        Returns
+        -----------
+        MulGroupBy
+            A :doc:`MulGroupBy <../groupby/indices>` object that contains information about the groups.
+                
+
+        Examples
+        ------------
+        >>> import muldataframe as md
+        >>> import pandas as pd
+        >>> index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                     index=['a','b','b'],
+                     columns=['x','y'])
+        >>> columns = pd.DataFrame([[5,7],[3,6]],
+                        index=['c','d'],
+                        columns=['f','g'])
+        >>> mf = MulDataFrame([[1,2],[8,9],[8,10]],index=index, columns=columns)
+        >>> for key, group in mf.groupby('y'):
+        ...     if key == 6:
+        ...         print(key,'\\n',group)
+        6
+        (2, 2)    g  7   6
+                  f  5   3
+                     c   d
+        --------  ---------
+           x  y      c   d
+        b  3  6   b  8   9
+        b  5  6   b  8  10
+        >>> mf.groupby('y').mean(axis=0)
+        (2, 2)   g    7    6
+                 f    5    3
+                      c    d
+        -------  -----------
+           y          c    d
+        0  2     0  1.0  2.0
+        1  6     1  8.0  9.5
+        >>> ms.groupby('y',agg_mode='list').sum()
+        (2,)                  f   b
+                              e   a
+                                 cc
+        --------------------  ------
+                x  y       z     cc
+        0  [a, g]  b  [c, f]  0   3
+        1       b  g       h  1   3
+        '''
         indexType = 'index' if axis == 0 else 'columns'
         return cmm.groupby(self,indexType,by=by,
                            keep_primary=keep_primary,agg_mode=agg_mode,

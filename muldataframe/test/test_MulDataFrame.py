@@ -5,6 +5,8 @@ from .lib import eq
 import pytest
 import numpy as np
 
+#TODO: mloc set
+
 def get_data():
     index = pd.DataFrame([[1,2],[3,6],[5,6]],
                      index=['a','b','b'],
@@ -200,13 +202,19 @@ def test_op_call():
     assert eq(md2.iloc[0].values,[2,1])
     
 
-def test_mloc():
+def test_mloc_nloc():
     md,index,columns = get_data()
-    md2 = md.mloc[[None,6]]
+    md2 = md.mloc[[..., 6]]
     # print('\n',md.mloc[[None,6],[5]])
     assert eq(md2.values,[[8,9],[8,10]])
     md2 = md.mloc[[[1,3],6]]
     assert eq(md2.values,[8,9])
+
+    md2 = md.nloc[[..., 6]]
+    assert eq(md2.values,[[8,9],[8,10]])
+    md2 = md.nloc[{1:6}]
+    assert eq(md2.values,[[8,9],[8,10]])
+
 
     md2 = md.mloc[[[1,3],[6]]]
     assert eq(md2.values,[[8,9]])
@@ -224,19 +232,22 @@ def test_mloc():
     with pytest.raises(KeyError):
         md.mloc[{'y':6,'x':[1,3]}]
 
-    md2 = md.mloc[:,[None,7]]
+    md2 = md.mloc[:,[...,7]]
     assert eq(md2.values,[1,8,8])
-    md2 = md.mloc[[None,6],[None,7]]
+    md2 = md.mloc[[...,6],[...,7]]
     assert eq(md2.values,[8,8])
 
-    md2 = md.mloc[[None,2],{'g':6}]
+    md2 = md.nloc[{1:6},{1:7}]
+    assert eq(md2.values,[8,8])
+
+    md2 = md.mloc[[...,2],{'g':6}]
     # print('\n',md.mloc[:,{'g':6}])
     assert md2 == 2
 
-    md.mloc[[None,2],{'g':6}] = 3
+    md.mloc[[...,2],{'g':6}] = 3
     assert md.iloc[0,1] == 3
 
-    md.mloc[[None,6],{'f':5}] = [5,5]
+    md.mloc[[...,6],{'f':5}] = [5,5]
     assert eq(md.iloc[1:,0].values, [5,5])
 
     md.mcols.iloc[:,0] = [5,5]
@@ -324,10 +335,6 @@ def test_reset_index():
         md2.reset_index(['c','d'],col_fill=md.mcols)
 
 
-
-
-
-
 def test_drop_duplicates():
     md,index,columns = get_data()
     md2 = md.drop_duplicates('c')
@@ -375,6 +382,11 @@ def test_iloc():
 
 def test_groupby():
     md, index, columns = get_data()
+    print('\n',md.groupby('y').mean(axis=0))
+    # for key, group in md.groupby('y'):
+    #     if key == 6:
+    #         print(key,'\n',group)
+        # break
     gpo =  md.groupby('y')
     for i, (k,gp) in enumerate(gpo):
         if i==0:

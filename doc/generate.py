@@ -4,7 +4,7 @@ from lib import *
 ss_attrs_only = ['index','name',
          'values','ss','ds','shape',
          'mindex','mname']
-ss_indexing = ['iloc','loc','mloc']
+ss_indexing = ['iloc','loc','mloc','nloc']
 
 ss_attrs = ss_attrs_only+ss_indexing
 

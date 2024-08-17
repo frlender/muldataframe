@@ -106,15 +106,15 @@ class MulSeries:
         self.mloc = cmm.Accessor(self._mloc_get,
                              self._mloc_set)
         '''
-        Flexible hierachical indexing on the index dataframe. The slicer can be an array or a dict. Check introduction to mloc ??? for detailed usage.
+        Flexible hierachical indexing on the index dataframe. The slicer can be a list or a dict. Check introduction to mloc ??? for detailed usage.
         
-        If an array is used, its length should be less than or equal to the columns length of the index dataframe. The hierarchical indexing order is from the leftmost column to the rightmost. Use ``None`` as ``:`` in the array to select all elements in a column.
+        If a list is used, its length should be less than or equal to the columns length of the index dataframe. The hierarchical indexing order is from the leftmost column to the rightmost. Use ``...`` as ``:`` in the list to select all elements in a column.
 
-        If a dict is used, its keys should be the column names of the index dataframe and its values the slicers on the columns. The hierachical indexing order is the insertion order of the keys in the dict. Although Python does not guanrantee the insertion order, it is generally preserved in most cases. Use the `OrderedDict <https://docs.python.org/3/library/collections.html#collections.OrderedDict>`_ class if you are really concerned about it.
+        If a dict is used, its keys should be the column names of the index dataframe and its values the slicers on the columns. The hierachical indexing order is the insertion order of the keys in the dict. Although Python does not guanrantee the insertion order, it is preserved in most cases. Use the `OrderedDict <https://docs.python.org/3/library/collections.html#collections.OrderedDict>`_ class if you are really concerned about it.
 
         Examples
         ---------
-        Array indexing:
+        List indexing:
 
         >>> import pandas as pd
         >>> import muldataframe as md
@@ -124,7 +124,7 @@ class MulSeries:
                            columns=['x','y','y'])
         >>> name = pd.Series(['a','b'],index=['e','f'],name='cc')
         >>> ms = md.MulSeries([1,2,3],index=index,name=name)
-        >>> ms.mloc[[None,'b']]
+        >>> ms.mloc[[..., 'b']]
         (2,)        e   a
                     f   b
                        cc
@@ -132,7 +132,7 @@ class MulSeries:
            x  y  y     cc
         0  a  b  c  0   1
         1  g  b  f  1   2
-        >>> ms.mloc[['g',None,['h','f']]]
+        >>> ms.mloc[['g', ..., ['h','f']]]
         2
 
         Dictionary indexing:
@@ -147,7 +147,39 @@ class MulSeries:
         0  a  b  c  0   1
 
         Note in the above example that if the index dataframe's columns have duplicate names, use the **last** column for indexing.
+        
+        '''
+        self.nloc = cmm.Accessor(self._nloc_get,
+                             self._nloc_set)
+        '''
+        Flexible hierachical indexing on the index dataframe. The slicer can be a list or a dict. Check introduction to mloc ??? for detailed usage.
+        
+        If a list is used, it behaves exactly like :doc:`mloc`.
 
+        If a dict is used, it behaves similarly to :doc:`mloc` except that instead of using column names as keys, it uses the numeric positions of the columns as keys.
+
+        Examples
+        ---------
+        Dictionary indexing:
+
+        >>> import pandas as pd
+        >>> import muldataframe as md
+        >>> index = pd.DataFrame([['a','b','c'],
+                                  [ 'g','b','f'],
+                                  [ 'b','g','h']],
+                           columns=['x','y','y'])
+        >>> name = pd.Series(['a','b'],index=['e','f'],name='cc')
+        >>> ms = md.MulSeries([1,2,3],index=index,name=name)
+        >>> ms.mloc[{1:['b','g'],0:['b','a']}]
+        (2,)        e   a
+                    f   b
+                       cc
+        ----------  ------
+           x  y  y     cc
+        2  b  g  h  2   3
+        0  a  b  c  0   1
+
+        Note that using a dict in :doc:`mloc`, you can only select the last ``y`` column in the index dataframe. Using ``nloc`` you are able to select the first ``y`` column.
         '''
 
     def __repr__(self):
@@ -278,7 +310,7 @@ class MulSeries:
             getattr(self.__ss,attr)[key] = values
         return _xloc_set
 
-    def _mloc(self,key):
+    def _mloc2pos(self,key):
         nx = cmm._mloc_idx(key,self.index)
         return nx
     
@@ -286,15 +318,33 @@ class MulSeries:
         if key == slice(None):
             return self.iloc[:]
         else:
-            nx = self._mloc(key)
+            nx = self._mloc2pos(key)
             return self.iloc[nx]
     
     def _mloc_set(self,key,values):
         if key == slice(None):
             self.iloc[:] = values
         else:
-            nx = self._mloc(key)
+            nx = self._mloc2pos(key)
             self.iloc[nx] = values
+    
+    def _nloc2pos(self,key:dict):
+        return cmm._nloc_idx(key,self.index)
+    
+    def _nloc_get(self,key):
+        if isinstance(key,dict):
+            nx = self._nloc2pos(key)
+            return self.iloc[nx]
+        else:
+            return self._mloc_get(key)
+    
+    def _nloc_set(self,key,values):
+        if isinstance(key,dict):
+            nx = self._nloc2pos(key)
+            self.iloc[nx] = values
+        else:
+            self._mloc_set(key,values)
+
 
     def __fill_cols(self,col_fill,cols,inplace):
         if isinstance(col_fill,pd.Series) or \
@@ -516,16 +566,19 @@ class MulSeries:
         '''
         Group MulSeries by its index dataframe using a mapper or the index dataframe's columns.
 
-        The function uses the `DataFrame.groupby(axis=0) <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.groupby.html#pandas.DataFrame.groupby>`_ method of the index dataframe to create groups under the hood. The values of the MulSeries are grouped accordingly. It returns a :doc:`MulGroupBy <../groupby/indices>` object that contains information about the groups.
+        The function uses the `DataFrame.groupby <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.groupby.html#pandas.DataFrame.groupby>`_ method of the index dataframe to create groups under the hood. The values of the MulSeries are grouped accordingly. It returns a :doc:`MulGroupBy <../groupby/indices>` object that contains information about the groups.
 
         Parameters
         ------------
         by : None, mapping, function, label, pd.Grouper or list of such
             Please refers to `DataFrame.groupby <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.groupby.html#pandas.DataFrame.groupby>`_ for detailed information on this argument. The difference to the :code:`by` argument in DataFrame.groupby is that if it is None, uses the primary index to group the MulSeries.
         keep_primary : bool, default False
-            Whether to keep primary index in the grouped index dataframes. If True, the primary index will be reset as a column and kept in the grouped dataframes.
-        agg_mode : 'same_only', 'list','tuple'
-            Determine how to aggregate column values in the index dataframe that are not the same in each group when calls numpy functions on or using the :doc:`call <../groupby/indices>` method of the MulGroupBy object.'same_only': only keep columns that have the same values within each group. 'list': put columns that do not have the same values within a group into a list. 'tuple': similar to 'list', but put them into a tuple.
+            Whether to keep primary index in the index dataframe in each group. If ``True``, the primary index will be reset as a column and kept in the grouped dataframes.
+        agg_mode : 'same_only', 'list','tuple', default to 'same_only'
+            Determine how to aggregate column values in the index dataframe that are not the same in each group when calling numpy functions on or using the :doc:`call <../groupby/indices>` method of the MulGroupBy object.
+             - ``'same_only'``: only keep columns that have the same values within each group. 
+             - ``'list'``: put columns that do not have the same values within a group into a list. 
+             - ``'tuple'``: similar to 'list', but put them into a tuple.
 
         Returns
         -----------

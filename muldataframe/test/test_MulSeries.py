@@ -218,7 +218,7 @@ def test_loc():
 
 
 
-def test_mloc_get():
+def test_mloc_nloc_get():
     index = pd.DataFrame([['a','b','c'],
                         [ 'g','b','f'],
                         [ 'b','g','h']],
@@ -228,19 +228,24 @@ def test_mloc_get():
     # print(type(ms.mloc[[None,'b']].values))
     assert eq(ms.mloc[:].values,[1,2,3])
 
-    assert eq(ms.mloc[[None,'b']].values,
+    assert eq(ms.mloc[[...,'b']].values,
+                      [1,2])
+    
+    assert eq(ms.nloc[:].values,[1,2,3])
+
+    assert eq(ms.nloc[[...,'b']].values,
                       [1,2])
     # print('\n',ms.mloc[[None,'b']])
-    assert eq(ms.mloc[[None,None,['h','f']]].values,[3,2])
+    assert eq(ms.mloc[[..., ..., ['h','f']]].values,[3,2])
 
-    assert ms.mloc[['g',None,['h','f']]] == 2
+    assert ms.mloc[['g', ..., ['h','f']]] == 2
 
     with pytest.raises(KeyError):
-        ms.mloc[['a',None,['h','f']]]
+        ms.mloc[['a', ..., ['h','f']]]
     with pytest.raises(KeyError):
-        ms.mloc[[['a','g'],None,['h','f']]]
+        ms.mloc[[['a','g'], ..., ['h','f']]]
     with pytest.raises(IndexError):
-        ms.mloc[[['a','g'],None,['h','f'],'kk']]
+        ms.mloc[[['a','g'], ..., ['h','f'],'kk']]
     
     assert ms.mloc[['b']] == 3
     with pytest.raises(KeyError):
@@ -249,12 +254,16 @@ def test_mloc_get():
     assert eq(ms.mloc[{'y':['c','h']}].values,[1,3])
     assert ms.mloc[{'x':'b'}] == 3
 
-    assert eq(ms.mloc[[['a','g'],None,['f','c']]].values,[2,1])
-    assert eq(ms.mloc[[['g','a'],None,['c','f']]].values,[1,2])
+    assert eq(ms.mloc[[['a','g'], ..., ['f','c']]].values,[2,1])
+    assert eq(ms.mloc[[['g','a'], ..., ['c','f']]].values,[1,2])
 
     assert eq(ms.mloc[{'y':['c','h'],'x':['b','a']}].values,[3,1])
     # print('\n',ms.mloc[{'y':['c','h'],'x':['b','a']}])
     assert eq(ms.mloc[{'y':['h','c'],'x':['a','b']}].values,[1,3])
+
+    assert eq(ms.nloc[{2:['c','h'],0:['b','a']}].values,[3,1])
+    assert eq(ms.nloc[{2:['h','c'],0:['a','b']}].values,[1,3])
+
 
     index = pd.DataFrame([['a','b','c'],
                         [ 'g','b','f'],
@@ -262,20 +271,25 @@ def test_mloc_get():
                         columns=['x','y','z'])
     name = name = pd.Series(['a','b'],index=['e','f'],name='cc')
     ms = MulSeries([1,2,3],index=index,name=name)
-    assert eq(ms.mloc[[None,'b']].values,[1,2])
+    assert eq(ms.mloc[[..., 'b']].values,[1,2])
     
     res = ms.mloc[{'y':[True, False, True]}]
     assert eq(res.values,[1,3])
 
-def test_mloc_set():
+def test_mloc_nloc_set():
     index = pd.DataFrame([['a','b','c'],
                         [ 'g','b','f'],
                         [ 'b','g','h']],
                         columns=['x','y','y'])
     name = pd.Series(['a','b'],index=['e','f'],name='cc')
     ms = MulSeries([1,2,3],index=index,name=name)
-    ms.mloc[[None,'g']] = 5
+    ms.mloc[[..., 'g']] = 5
     assert eq(ms.values,[1,2,5])
+
+    ms2 = ms.copy()
+    ms2.nloc[{1:'g'}] = 6
+    assert eq(ms2.values,[1,2,6])
+    ms2.nloc[:] = [1,2,3]
 
     ms.iloc[:] = [1,2,3]
     assert eq(ms.values,[1,2,3])
@@ -284,6 +298,9 @@ def test_mloc_set():
 
     ms.mloc[{'y':['c','f']}] = [5,6]
     assert eq(ms.values,[5,6,3])
+
+    ms2.nloc[{2:['c','f']}] = [5,6]
+    assert eq(ms2.values,[5,6,3])
 
     index = pd.DataFrame([['a','b','c'],
                         [ 'g','b','f'],
