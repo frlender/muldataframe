@@ -444,6 +444,7 @@ def test_query():
     md2 = md.query('c == 8')
     assert md2.shape == (2,2)
     assert md2.iloc[0,0] == 8
+    # print('\n',md2)
 
     md3 = md.query(index='y > 3')
     assert md3 == md2
@@ -463,6 +464,7 @@ def test_query():
     assert md6.shape == (1,1)
     assert eq(md6.values,[[8]])
     assert md6.mcols.shape == (1,2)
+    # print('\n',md6)
 
     md7 = md.copy()
     md7.query('c==8',index='x<=3',

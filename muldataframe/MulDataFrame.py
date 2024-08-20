@@ -12,7 +12,9 @@ tabulate.PRESERVE_WHITESPACE = True
 
 class MulDataFrame:
     '''
-    A multi-index dataframe with the index and the columns being pandas dataframes. It also has an underlying values dataframe that is not directly accessible. Its values are the same as the values of the values dataframe.
+    A multi-index dataframe with the index and the columns being pandas dataframes. 
+    
+    It also has an underlying values dataframe that is not directly accessible. Its values are the same as the values of the values dataframe.
 
     Parameters
     -----------
@@ -23,9 +25,19 @@ class MulDataFrame:
     columns : pandas.DataFrame
         If columns is None, construct an empty columns dataframe using the columns of the values dataframe as its index.
     index_init : Literal['override'] | Literal['align']
-        The option determins how to align the index of the index dataframe to the index of the values dataframe. In the override mode, the index of the index dataframe overrides the index of the values dataframe. This mode requires both indices' lengths to be the same. The align mode is only effective if the data argumnet implies an index and the index argument is not None. In this mode, the index of the index dataframe is used to index the values dataframe constructed from the data argument. The resulting dataframe is used as the final values dataframe. It requires the index of the values dataframe being uinque and the labels of the index dataframe's index exist in the index of the values dataframe. By default, the constructor prioritizes the align mode if possible.
+        The option determins how to align the index of the index dataframe to the index of the values dataframe. 
+        
+        - 'override': the index of the index dataframe overrides the index of the values dataframe. This mode requires both indices' lengths to be the same. 
+        - 'align': the index of the index dataframe is used to index the values dataframe constructed from the data argument. This mode is only effective if the ``data`` argument implies an index and the ``index`` argument is not ``None``. The resulting indexed values dataframe is used as the final values dataframe. It requires the index of the values dataframe being uinque and the labels of the index dataframe's index exist in the index of the values dataframe. 
+        
+        By default, the constructor prioritizes the align mode if possible.
     columns_init : Literal['override'] | Literal['align']
-        The option determins how to align the index of the columns dataframe to the columns of the values dataframe. In the override mode, the index of the columns dataframe overrides the columns of the values dataframe. This mode requires both indices' lengths to be the same. The align mode is only effective if the data argumnet implies a columns index and the columns argument is not None. In this mode, the index of the columns dataframe is used to index the columns of the values dataframe constructed from the data argument. The resulting dataframe is used as the final values dataframe. It requires the columns of the values dataframe being uinque and the labels of the columns dataframe's index exist in the columns of the values dataframe. By default, the constructor prioritizes the align mode if possible.
+        The option determins how to align the index of the columns dataframe to the columns of the values dataframe. 
+        
+        - 'override': the index of the columns dataframe overrides the columns of the values dataframe. This mode requires both indices' lengths to be the same. 
+        - 'align': the index of the columns dataframe is used to index the columns of the values dataframe constructed from the data argument. This mode is only effective if the ``data`` argument implies a columns index and the ``columns`` argument is not ``None``. The resulting indexed values dataframe is used as the final values dataframe. It requires the columns of the values dataframe being uinque and the labels of the columns dataframe's index exist in the columns of the values dataframe. 
+        
+        By default, the constructor prioritizes the align mode if possible.
     both_init : Literal['override'] | Literal['align']
         It overrides index_init and columns_init with the same value.
     index_copy : bool
@@ -943,6 +955,55 @@ class MulDataFrame:
 
     def query(self,values=None,index=None,columns=None,
               **kwargs):
+        '''
+        Query the columns of the index, columns or values dataframe of a MulDataFrame alone or in combinations and return the intersection of the query results.
+
+        The function uses the ``pandas.DataFrame.query`` method under the hood for the three quries.
+
+        Parameters
+        -----------
+        values : None or str
+            The query string to evaluate for the values dataframe. Check `DataFrame.query <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.query.html>`_ for detailed specification of this argument.
+        index : None or str
+            Same as the ``values`` argument except that it is evaluated for the index dataframe.
+        columns : None or str
+            Same as the ``values`` argument except that it is evaluated for the columns dataframe.
+        kwargs : any
+            The same ``kwargs`` passed to `DataFrame.query <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.query.html>`_ including the ``inplace=False`` argument. All three queries use the same set of ``kwargs``.
+
+        Returns
+        ----------
+        MulDataFrame or None
+            None if ``inplace=True.``
+
+
+        Examples
+        ---------
+        >>> import pandas as pd
+        >>> import muldataframe as md
+        >>> index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                     index=['a','b','b'],
+                     columns=['x','y'])
+        >>> columns = pd.DataFrame([[5,7],[3,6]],
+                        index=['c','d'],
+                        columns=['f','g'])
+        >>> mf = MulDataFrame([[1,2],[8,9],[8,10]],index=index, columns=columns)
+        >>> mf.query('c == 8')
+        (2, 2)    g  7   6
+                  f  5   3
+                     c   d
+        --------  ---------
+           x  y      c   d
+        b  3  6   b  8   9
+        b  5  6   b  8  10
+        >>> md.query('c==8', index='x<=3', columns='f>3')
+        (1, 1)    g  7
+                  f  5
+                     c
+        --------  ------
+           x  y      c
+        b  3  6   b  8
+        '''
         if 'inplace' in kwargs:
             inplace = kwargs['inplace']
         else:
@@ -997,6 +1058,33 @@ class MulDataFrame:
     def melt(self,prefix=None,value_name='value',
              ignore_primary_index=False,
              ignore_primary_columns=False):
+        '''
+        Melt the MulDataFrame into a flattened "records" table.
+
+        In the "records" table, each value in the values dataframe occupies a row in which its corresponding metadata in the index and columns dataframes are also filled. The "records" table is a ``pandas.DataFrame``.
+
+        Check ???md.pivot_table for a reverse operation.
+
+        Parameters
+        -----------
+        prefix : None, True or function
+            Whether to add prefixes to the common column names of the index and the columns dataframes.
+
+            - None : do not add prefixes. In the "records" table there might be the same columns names coming from the index and the columns dataframe.
+            - True : if two names are the same, add ``'x_'`` in front of the name if it comes from the index dataframe and ``'y_'`` if from the columns dataframe.
+            - function : a function to customize the prefixes. It is in the signature of ``def prefix(indexType: 'index'|'columns', name: str) -> str``. The first argumnet determines where the column name comes from. For example, if it is ``'index'``, the name is a common name coming from the index dataframe.
+        value_name : str, default "value"
+            How to name the column that contains the values in the values dataframe.
+        ignore_primary_index : bool, default False
+            Whether to include the primary index as a column in the "records" table.
+        ignore_primary_columns : bool, default False
+            Whether to include the primary columns as a column in the "records" table.
+        
+        Returns
+        --------
+        pandas.DataFrame
+            A ``pandas.DataFrame`` is returned.
+        '''
         if ignore_primary_index:
             mindex = self.index.copy()
             mindex.index = list(range(mindex.shape[0]))
