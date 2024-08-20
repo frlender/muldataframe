@@ -170,7 +170,7 @@ class MulSeries:
                            columns=['x','y','y'])
         >>> name = pd.Series(['a','b'],index=['e','f'],name='cc')
         >>> ms = md.MulSeries([1,2,3],index=index,name=name)
-        >>> ms.mloc[{1:['b','g'],0:['b','a']}]
+        >>> ms.nloc[{1:['b','g'],0:['b','a']}]
         (2,)        e   a
                     f   b
                        cc

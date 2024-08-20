@@ -9,7 +9,6 @@ tabulate.PRESERVE_WHITESPACE = True
 # import muldataframe.util as util
 
 #TODO itercols
-#TODO operators like __add__ add to the __getattr___
 
 class MulDataFrame:
     '''
@@ -196,7 +195,7 @@ class MulDataFrame:
         >>> columns = pd.DataFrame([[5,7],[3,6]],
                         index=['c','d'],
                         columns=['f','g'])
-        >>> md.mloc[:,{1:6}]
+        >>> md.nloc[:,{1:6}]
         (3,)      g  6
                   f  3
                      d
@@ -205,7 +204,7 @@ class MulDataFrame:
         a  1  2  a   2
         b  3  6  b   9
         b  5  6  b  10
-        >>> md.mloc[:,{1:[6]}].shape
+        >>> md.nloc[:,{1:[6]}].shape
         (3,1)
         '''
 
@@ -225,7 +224,7 @@ class MulDataFrame:
         Use `DataFrame.__iter__ <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.__iter__.html>`_ of the values dataframe under the hood. 
         '''
         return self.__df.__iter__()
-    
+
     def __getattr__(self,name):
         if name == 'values':
             return self.__df.values
@@ -245,6 +244,14 @@ class MulDataFrame:
                              index=self.index.index,
                              columns=self.columns.index,
                              copy=False)
+        # # below will not work
+        # elif name.strip('__') in cmm.OPS or \
+        #     name.strip('__').lstrip('r') in cmm.OPS:
+        #     def call_op(self,other):
+        #         func = getattr(pd.DataFrame,name)
+        #             # print(op_attr,func)
+        #         return self.call(func,other)
+        #     return call_op
         elif cmm.is_pandas_method(self,name):
             def func(*args,**kwargs):
                 return self.call(name,*args,**kwargs)

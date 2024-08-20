@@ -14,6 +14,7 @@ MIndexType = Literal['mindex'] | Literal['mcolumns']
 IndexInit = Literal['override'] | Literal['align']
 IndexAgg = Literal['same_only'] | Literal['list'] | Literal['tuple']
 
+OPS = ['add','sub','mul','div','truediv','floordiv','mod','pow']
 
 class Accessor:
     def __init__(self,getter,setter,max_idx=1):
