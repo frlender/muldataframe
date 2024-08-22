@@ -1,0 +1,6 @@
+concat
+===========
+
+.. autofunction:: muldataframe.concat
+
+
