@@ -9,6 +9,10 @@ tabulate.PRESERVE_WHITESPACE = True
 # import muldataframe.util as util
 
 #TODO itercols
+#TODO iloc, loc accept boolean series as input?
+#TODO insert
+#TODO iloc, loc, setitem, create new rows or columns when the label is not in the primary index/columns.
+#TODO print display improve. 1) align columns dataframe and values dataframes. 2) in case index and columns have names like the example in pivot_table doc.
 
 class MulDataFrame:
     '''
@@ -248,6 +252,10 @@ class MulDataFrame:
             return self.index
         elif name in ['mcolumns','mcols']:
             return self.columns
+        elif name in ['pindex','pidx']:
+            return self.index.index
+        elif name in ['pcolumns','pcols']:
+            return self.columns.index
         elif name == 'shape':
             return self.__df.shape
         elif name == 'ds':
@@ -287,9 +295,6 @@ class MulDataFrame:
 
     def __len__(self):
         return self.shape[0]
-    
-    def __eq__(self,other):
-        return self.equals(other)
     
     def equals(self,other):
         '''
@@ -379,7 +384,13 @@ class MulDataFrame:
         
     
     def __setitem__(self,key, values):
+        mname = None
+        if isinstance(values,md.MulSeries):
+            values = values.ds
+            mname = values.name
         self.__df[key] = values
+        if not isinstance(key,list) and key not in self.pcols:
+            self.mcols.loc[key] = mname
 
     def _xloc_get_factory(self,attr):
         def _xloc_get(key):
@@ -413,9 +424,19 @@ class MulDataFrame:
     
     def _xloc_set_factory(self,attr):
         def _xloc_set(key,values):
-            # print('===dddddd===',key,values)
             idx, col = self._get_indices(key)
-            getattr(self.__df,attr)[idx,col] = values
+            if attr == 'iloc':
+                getattr(self.__df,attr)[idx,col] = values
+            else:
+                mname = None
+                if isinstance(values,md.MulSeries):
+                    values = values.ds
+                    mname = values.name
+                getattr(self.__df,attr)[idx,col] = values
+                if idx is slice(None) and not isinstance(col,list) and col not in self.pcols:
+                    self.mcols.loc[col] = mname
+                if col is slice(None) and not isinstance(idx,list) and idx not in self.pindex:
+                    self.mindex.loc[idx] = mname
         return _xloc_set
     
     def _mloc2pos(self,key):
@@ -720,7 +741,7 @@ class MulDataFrame:
         if subset is None and mloc:
             subset = self._mloc_to_primary(mloc,self.mcolumns)
 
-       
+        self.__df._update_super_index()
         bidx = self.__df.duplicated(subset=subset,keep=keep)
         bidx_keep = ~bidx
         new_df = self.__df.loc[bidx_keep]
@@ -987,7 +1008,7 @@ class MulDataFrame:
         >>> columns = pd.DataFrame([[5,7],[3,6]],
                         index=['c','d'],
                         columns=['f','g'])
-        >>> mf = MulDataFrame([[1,2],[8,9],[8,10]],index=index, columns=columns)
+        >>> mf = md.MulDataFrame([[1,2],[8,9],[8,10]],index=index, columns=columns)
         >>> mf.query('c == 8')
         (2, 2)    g  7   6
                   f  5   3
@@ -1068,13 +1089,13 @@ class MulDataFrame:
         Parameters
         -----------
         prefix : None, True or function
-            Whether to add prefixes to the common column names of the index and the columns dataframes.
+            Whether to add prefixes to the common column names in the index and the columns dataframes.
 
             - None : do not add prefixes. In the "records" table there might be the same columns names coming from the index and the columns dataframe.
             - True : if two names are the same, add ``'x_'`` in front of the name if it comes from the index dataframe and ``'y_'`` if from the columns dataframe.
-            - function : a function to customize the prefixes. It is in the signature of ``def prefix(indexType: 'index'|'columns', name: str) -> str``. The first argumnet determines where the column name comes from. For example, if it is ``'index'``, the name is a common name coming from the index dataframe.
+            - function : a function to customize the prefixes. It is in the signature of ``def prefix(indexType: 'index'|'columns', name: str) -> str``. The first argumnet determines where the column name comes from. For example, if it is ``'index'``, the name is a column name from the index dataframe.
         value_name : str, default "value"
-            How to name the column that contains the values in the values dataframe.
+            How to name the column that contains the values from the values dataframe.
         ignore_primary_index : bool, default False
             Whether to include the primary index as a column in the "records" table.
         ignore_primary_columns : bool, default False
@@ -1084,6 +1105,28 @@ class MulDataFrame:
         --------
         pandas.DataFrame
             A ``pandas.DataFrame`` is returned.
+        
+        Examples
+        ---------
+        >>> import pandas as pd
+        >>> import muldataframe as md
+        >>> index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                     index=['a','b','b'],
+                     columns=['x','y'])
+        >>> columns = pd.DataFrame([[5,7],[3,6]],
+                        index=['c','d'],
+                        columns=['f','g'])
+        >>> mf = MulDataFrame([[1,2],[8,9],[8,10]],index=index,columns=columns)
+        >>> mf.melt()
+          index  x  y index  f  g value
+        0     a  1  2     c  5  7     1
+        1     a  1  2     d  3  6     2
+        2     b  3  6     c  5  7     8
+        3     b  3  6     d  3  6     9
+        4     b  5  6     c  5  7     8
+        5     b  5  6     d  3  6    10
+        >>> mf.melt(prefix=True,value_name='num').columns.tolist()
+        ['x_index','x','y','y_index','f','g','num']
         '''
         if ignore_primary_index:
             mindex = self.index.copy()
@@ -1120,15 +1163,56 @@ class MulDataFrame:
         
         return df
 
+    def insert(self,label,value,loc=None,name=None, inplace=True, axis=1):
+        column = label
+        if inplace:
+            shape = self.shape
+            self.__df._update_super_index()
+            __df = self.__df
+            self.__df = None
+            if isinstance(value,md.MulSeries):
+                name = value.name
+                value = value.ds
 
-ops = ['add','sub','mul','div','truediv','floordiv','mod','pow']
+            if axis == 1:
+                loc = shape[1] if loc is None else loc
+                if name is None:
+                    name = [None]*self.mcolumns.shape[1]
+                __df.insert(loc,column,value)
+                mcols = self.mcolumns.transpose()
+                mcols.insert(loc,column,name)
+                self.mcolumns = mcols.transpose()
+                self.__df = __df
+            else:
+                loc = shape[0] if loc is None else loc
+                if name is None:
+                    name = [None]*self.mindex.shape[1]
+                __df = __df.transpose()
+                __df.insert(loc,column,value)
+                __df = __df.transpose()
+                mindex = self.mindex.transpose()
+                mindex.insert(loc,column,name)
+                self.mindex = mindex.transpose()
+                self.__df = __df
+        else:
+            mf = self.copy()
+            mf.insert(column,value,loc,name,True,axis)
+            return mf
+
+
+ops = ['add','sub','mul','div','truediv','floordiv','mod','pow','eq','le','lt','gt','ge','ne']
 for op in ops:
     op_attr = '__'+op+'__'
     def call_op_factory(op_attr):
         def call_op(self,other):
-            func = getattr(pd.DataFrame,op_attr)
-            # print(op_attr,func)
-            return self.call(func,other)
+            # func = getattr(pd.DataFrame,op_attr)
+            # # print(op_attr,func)
+            if 'eq__' in op_attr:
+                return self.equals(other)
+            elif 'ne__' in op_attr:
+                return not self.equals(other)
+            else:
+                return self.call(op_attr,other)
         return call_op
     setattr(MulDataFrame,op_attr,call_op_factory(op_attr))
     r_op_attr = '__r'+op+'__'

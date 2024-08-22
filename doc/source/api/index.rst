@@ -9,5 +9,6 @@ API reference
    mulseries/indices.rst
    muldataframe/indices.rst
    groupby/indices.rst
+   utility/indices.rst
 
 

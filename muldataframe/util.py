@@ -29,7 +29,58 @@ def aggregate_index(i:int,index:pd.DataFrame,index_agg:cmm.IndexAgg) -> pd.DataF
         
 
 def concat(arr:list[md.MulSeries|md.MulDataFrame],axis=0):
+    '''
+    Concatenate muldataframe objects along a particular axis.
+
+    The list of muldataframe objects are joined by the primary index or columns depending on the specified axis. Index or columns dataframes along the axis are concatenated. Index or columns dataframes on the other axis are ignored except for the first one. The first one is used as the index or columns dataframe of the final muldataframe object. Currently, only inner join is supported. 
+
+    Parameters
+    -------------
+    objs : a list of MulSeries or MulDataFrame objects
+        It can be a mix of mulseries and muldataframes.
+    axis : {0, 1}, default 0
+        The axis to concatenate along.
+
+    Returns
+    ----------
+    MulSeries or MulDataFrame
+        It will return a mulseries only if the objects in the list are all mulseries and are concatenated along ``axis=0``
+    
+    Examples
+    ---------
+    >>> import pandas as pd
+    >>> import muldataframe as md
+    >>> index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                     index=['a','b','c'],
+                     columns=['x','y'])
+    >>> columns = pd.DataFrame([[5,7],[3,6]],
+                        index=['c','d'],
+                        columns=['f','g'])
+    >>> mf = md.MulDataFrame([[1,2],[8,9],[8,10]],index=index, columns=columns)
+    >>> ms = md.MulSeries([5,6,7],
+            index=pd.DataFrame(index=['a','b','c']),
+            name=pd.Series([8,9],index=['g','f']))
+    >>> pd.concat([mf,ms],axis=1)
+    (3, 3)    g  7   6  8
+              f  5   3  9
+                 c   d  k
+    --------  ------------
+       x  y      c   d  k
+    a  1  2   a  1   2  5
+    b  3  6   b  8   9  6
+    c  5  6   c  8  10  7
+    >>> pd.concat([ms,mf],axis=1)
+    (3, 3)            f  9  5   3
+                      g  8  7   6
+                         k  c   d
+    ----------------  ------------
+    Empty DataFrame      k  c   d
+    Columns: []       a  5  1   2
+    Index: [a, b, c]  b  6  8   9
+                      c  7  8  10
+    '''
     ds_new = pd.concat([x.ds for x in arr],join='inner',axis=axis)
+   
     # print('ddddddd',mds1.ds,mds2.ds,ds_new)
     if isinstance(ds_new,pd.Series):
         mindex_new = pd.concat([x.index for x in arr],join='inner')
@@ -42,13 +93,53 @@ def concat(arr:list[md.MulSeries|md.MulDataFrame],axis=0):
                     columns=arr[0].columns,index_copy=False)
         else:
             mcols_new = pd.concat([x.columns 
-                if hasattr(x,'columns') else x.name 
-                for x in arr],join='inner')
+                if isinstance(x,md.MulDataFrame) else pd.DataFrame(x.name).transpose() for x in arr],join='inner')
+            # print('***************')
+            # print(ds_new)
+            # print(mcols_new)
             return md.MulDataFrame(ds_new.values,index=arr[0].index,
                     columns=mcols_new,columns_copy=False)
     
 
 def pivot_table(*args,**kwargs):
+    '''
+    Same as ``pandas.pivot_table`` except that it returns a MulDataFrame.
+
+    If with the same arguments, ``pandas.pivot_table`` returns a dataframe with no multiindex. Then this function will return a muldataframe with empty index and columns dataframes with ther index attributes being set as the primary index and columns. 
+
+    Parameters
+    -----------
+    The parameters are exactly the same as in `pandas.pivot_table <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.pivot_table.html#pandas.DataFrame.pivot_table>`_. Please check its web page for detailed usage.
+
+    Returns
+    --------
+    MulDataFrame
+        returns a MulDataFrame
+
+    Examples
+    ----------
+    >>> import pandas as pd
+    >>> import muldataframe as md
+    >>> df = pd.DataFrame({"A": ["foo", "foo", "foo", "foo", "foo",
+                         "bar", "bar", "bar", "bar"],
+                   "B": ["one", "one", "one", "two", "two",
+                         "one", "one", "two", "two"],
+                   "C": ["small", "large", "large", "small",
+                         "small", "large", "small", "small",
+                         "large"],
+                   "D": [1, 2, 2, 3, 3, 4, 5, 6, 7],
+                   "E": [2, 4, 5, 5, 6, 6, 8, 9, 9]})
+    >>> pivot_table(df, values='D', index=['A', 'B'], columns=['C'], aggfunc="sum")
+    (4, 2)       Empty DataFrame
+                 Columns: []
+                 Index: [large, small]
+    -----------  -----------------------
+        A    B   C  large  small
+    0  bar  one  0    4.0    5.0
+    1  bar  two  1    7.0    6.0
+    2  foo  one  2    4.0    1.0
+    3  foo  two  3    NaN    6.0
+    '''
     df = pd.pivot_table(*args,**kwargs)
     # print(df)
     if isinstance(df.index,pd.MultiIndex):

@@ -18,6 +18,55 @@ def get_data():
                     columns=columns)
     return md,index,columns
 
+def test_insert():
+    mf,_,_ = get_data()
+    mf2 = mf.copy()
+    mf2.insert('e',[7,8,9])
+    assert eq(mf2.pcolumns.tolist(),['c','d','e'])
+    assert(mf2.shape == (3,3))
+    assert eq(mf2.iloc[:,-1].values,[7,8,9])
+    
+    # assert eq(mf2.columns.loc['e'].values,[np.nan]*2)
+    assert eq(mf2.columns.loc['e'].values,[None]*2)
+    assert(mf2.mindex.shape == (3,2))
+
+    mf2 = mf.insert('e',[7,8,9],inplace=False)
+    assert eq(mf2.pcolumns.tolist(),['c','d','e'])
+    assert (mf2.shape == (3,3))
+    assert eq(mf2.iloc[:,-1].values,[7,8,9])
+
+    mf2 = mf.insert('e',[7,8,9],name=[8,9],
+                    inplace=False)
+    assert eq(mf2.columns.loc['e'],[8,9])
+
+    mf2 = mf.insert('e',
+        MulSeries([7,8,9],
+                  name=pd.Series([8,9],index=['f','g']),
+                  index=pd.DataFrame(index=['a','b','b'])),
+        inplace=False)
+    assert eq(mf2.iloc[:,-1].values,[7,8,9])
+    assert eq(mf2.columns.loc['e'],[8,9])
+    mf3 = mf.insert('e',
+        MulSeries([7,8,9],
+                  name=pd.Series([8,9],index=['f','g']),
+                  index=pd.DataFrame(index=['a','b','b'])),
+        name=[10,12],
+        inplace=False)
+    assert(mf2 == mf3)
+
+    mf2 = mf.insert('e',[7,8], axis=0,
+                    inplace=False)
+    assert mf2.shape == (4,2)
+    assert mf2.index.shape == (4,2)
+    assert eq(mf2.index.loc['e'],[None]*2)
+
+    mf2 = mf.insert('e',[7,8], name=[9,10],
+                    axis=0,
+                    inplace=False)
+    assert eq(mf2.index.loc['e'],[9,10])
+    # print('\n',mf2)
+
+
 def test_init():
     index = pd.DataFrame([[1,2],[3,6],[5,6]],
                      index=['a','b','b'],
@@ -122,6 +171,7 @@ def test_get_setitem():
 
     md,index,columns = get_data()
     md['c'] = [5,5,5]
+    # print('================')
     assert eq(md.loc[:,'c'].values,[5,5,5])
 
 
@@ -489,6 +539,7 @@ def test_melt():
                     columns=columns)
     
     mf = md.melt()
+    print(mf)
     # print(mf)
     assert mf.shape == (md.shape[0]*md.shape[1],7)
     assert eq(mf['value'].values,np.ravel(md.values))

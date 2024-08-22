@@ -202,6 +202,12 @@ class MulSeries:
                              name=self.name.name)
         elif name in ['mindex','mname']:
             return getattr(self,name.lstrip('m'))
+        elif name == 'midx':
+            return self.index
+        elif name in ['pindex','pidx']:
+            return self.index.index
+        elif name == 'pname':
+            return self.name.name
         elif name == 'shape':
             return self.__ss.shape
         elif name == 'ds':
@@ -234,9 +240,6 @@ class MulSeries:
 
     def __len__(self):
         return self.shape[0]
-
-    def __eq__(self,other):
-        return self.equals(other)
     
     def equals(self,other):
         '''
@@ -275,6 +278,7 @@ class MulSeries:
         '''
         return self.__ss.__iter__()
 
+
     def __getitem__(self,key):
         new_ss = self.__ss[key]
         if(isinstance(new_ss,pd.Series)):
@@ -290,6 +294,9 @@ class MulSeries:
     
     def __setitem__(self,key, values):
         self.__ss[key] = values
+        if not isinstance(key,list) and key not in self.pindex:
+            self.index.loc[key] = None
+
     
     def _xloc_get_factory(self,attr):
         def _xloc_get(key):
@@ -308,6 +315,8 @@ class MulSeries:
     def _xloc_set_factory(self,attr):
         def _xloc_set(key,values):
             getattr(self.__ss,attr)[key] = values
+            if attr == 'loc' and not isinstance(key,list) and key not in self.pindex:
+                self.index.loc[key] = None
         return _xloc_set
 
     def _mloc2pos(self,key):
@@ -651,6 +660,7 @@ class MulSeries:
             If inplace=True, returns None. Otherwise, returns a MulSeries. The MulSeries' index dataframe is properly sliced according to removed values.
 
         '''
+        self.__ss._update_super_index()
         bidx = self.__ss.duplicated(keep=keep)
         bidx_keep = ~bidx
         new_ss = self.__ss.loc[bidx_keep]
@@ -668,14 +678,17 @@ class MulSeries:
 
 
 
-ops = ['add','sub','mul','div','truediv','floordiv','mod','pow']
+ops = ['add','sub','mul','div','truediv','floordiv','mod','pow','eq','le','lt','gt','ge','ne']
 for op in ops:
     op_attr = '__'+op+'__'
     def call_op_factory(op_attr):
         def call_op(self,other):
-            func = getattr(pd.Series,op_attr)
-            # print(op_attr,func)
-            return self.call(func,other)
+            if 'eq__' in op_attr:
+                return self.equals(other)
+            elif 'ne__' in op_attr:
+                return not self.equals(other)
+            else:
+                return self.call(op_attr,other)
         return call_op
     setattr(MulSeries,op_attr,call_op_factory(op_attr))
     r_op_attr = '__r'+op+'__'
@@ -695,8 +708,8 @@ for op in ops:
 
 
 ValSeries = vfb.ValFrameBase_factory(pd.Series)
-def _update_super_index(self):
-    self.index = self.parent.mindex.index
-    self.name = self.parent.name.name
-ValSeries._update_super_index = _update_super_index
+# def _update_super_index(self):
+#     self.index = self.parent.mindex.index
+#     self.name = self.parent.name.name
+# ValSeries._update_super_index = _update_super_index
 
