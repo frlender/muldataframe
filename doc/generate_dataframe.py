@@ -45,7 +45,7 @@ generate_attr_files(name,
     attrs_only+attrs_indexing,dyn_attrs,fld)
 
 
-methods = ['__iter__','copy','equals','transpose','set_index','reset_index','query','iterrows','drop_duplicates','call','groupby','melt']
+methods = ['__iter__','copy','equals','transpose','set_index','reset_index','query','iterrows','drop_duplicates','call','groupby','melt','insert']
 
 generate_method_files(name,
     methods,fld)

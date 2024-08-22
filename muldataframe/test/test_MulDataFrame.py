@@ -22,6 +22,7 @@ def test_insert():
     mf,_,_ = get_data()
     mf2 = mf.copy()
     mf2.insert('e',[7,8,9])
+    # print('\n',mf2)
     assert eq(mf2.pcolumns.tolist(),['c','d','e'])
     assert(mf2.shape == (3,3))
     assert eq(mf2.iloc[:,-1].values,[7,8,9])
@@ -64,7 +65,7 @@ def test_insert():
                     axis=0,
                     inplace=False)
     assert eq(mf2.index.loc['e'],[9,10])
-    # print('\n',mf2)
+    print('\n',mf2)
 
 
 def test_init():

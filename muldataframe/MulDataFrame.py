@@ -1164,6 +1164,63 @@ class MulDataFrame:
         return df
 
     def insert(self,label,value,loc=None,name=None, inplace=True, axis=1):
+        '''
+        Insert a row or a column into MulDataFrame at specified location.
+
+        Duplicate labels are allowed. It is an append operation if ``loc=None``.
+
+        Parameters
+        ------------
+        label : str, number, or hashable object
+            Label of the inserted column or row
+        value : Scalar, Series, array-like Content or MulSeries 
+            Content of the inserted column.
+        loc : None or int
+            Insertion index. Must verify 0 <= loc <= MulDataFrame.shape[1] if ``axis==1`` or 0 <= loc <= MulDataFrame.shape[0] if ``axis==0``. If ``loc=None``, insert at the end of the MulDataFrame, namely an append operation.
+        name : Scalar, Series, or array-like
+            The metadata of ``value`` inserted into either the columns dataframe (``axis==1``) or the index dataframe (``axis==0``). If ``value`` is a mulseries, this parameter is ignored.
+        inplace : bool, default True
+            Whether insert inplace or return a new MulDataFrame.
+        axis : {0,1}, default 1
+            Insert either a column (1) or a row (0).
+
+        Returns
+        ---------
+        None or MulDataFrame
+            return ``None`` if ``inplace=True``
+
+        Examples
+        ---------
+        >>> import pandas as pd
+        >>> import muldataframe as md
+        >>> index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                     index=['a','b','b'],
+                     columns=['x','y'])
+        >>> columns = pd.DataFrame([[5,7],[3,6]],
+                        index=['c','d'],
+                        columns=['f','g'])
+        >>> mf = MulDataFrame([[1,2],[8,9],[8,10]],index=index, columns=columns)
+        >>> mf.insert('e',[7,8,9],inplace=False)
+        (3, 3)    g  7   6  None
+                  f  5   3  None
+                     c   d   e
+        --------  ---------------
+           x  y      c   d   e
+        a  1  2   a  1   2   7
+        b  3  6   b  8   9   8
+        b  5  6   b  8  10   9
+        >>> mf.insert('e',[7,8], name=[9,10],
+                    axis=0, inplace=False)
+        (4, 2)    g  7   6
+                  f  5   3
+                     c   d
+        --------  ---------
+           x   y     c   d
+        a  1   2  a  1   2
+        b  3   6  b  8   9
+        b  5   6  b  8  10
+        e  9  10  e  7   8
+        '''
         column = label
         if inplace:
             shape = self.shape

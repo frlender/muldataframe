@@ -45,4 +45,5 @@ MulDataFrame
    call
    groupby
    melt
+   insert
 
