@@ -91,6 +91,14 @@ def test_ops_get_set_items():
     assert ms == ms2
     assert ms != pd.Series([1,3],index=['e','f'])
 
+    # print('\n',ms)
+    ms3 = ms.copy()
+    ms3['g'] = 9
+    assert ms3.shape == (3,)
+    assert ms3['g'] == 9
+    assert eq(ms3.index.loc['g'].values, [None]*2)
+
+
     def foo(ss):
         return ss.iloc[::-1]
     msf = ms.call(foo)
@@ -198,6 +206,13 @@ def test_loc():
                         index=['k','l','m'])
     name = pd.Series(['a','b'],index=['e','f'],name='cc')
     ms = MulSeries([1,2,3],index=index,name=name)
+    
+    ms2 = ms.copy()
+    ms2['p'] = 9
+    assert ms2.shape == (4,)
+    assert eq(ms2.index.loc['p'].values, [None]*3)
+    assert ms2['p'] == 9
+    # print('\n',ms2)
 
     assert ms.loc['k'] == 1
     assert eq(ms.loc[['m','l']].values, [3,2])

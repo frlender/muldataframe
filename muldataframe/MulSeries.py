@@ -10,7 +10,6 @@ import tabulate
 tabulate.PRESERVE_WHITESPACE = True
 
 #TODO: query for mulseries and muldataframe
-#TODO: func can be a string for MulGroupBy.call, using methods of pandas.groupby class.
 
 class MulSeries:
     '''
@@ -241,6 +240,29 @@ class MulSeries:
     def __len__(self):
         return self.shape[0]
     
+    def drop(self,labels,mloc=None,inplace=False):
+        if inplace:
+            __ss = self.__ss
+            self.__ss = None
+            if mloc is None:
+                __ss.drop(labels,inpalce=True)
+                self.mindex.drop(labels,inpalce=True)
+            else:
+                __ss.index = self.mindex[mloc]
+                self.mindex['_&%@x'] = self.mindex.index
+                self.mindex.index = self.mindex[mloc]
+                self.mindex.drop(labels,inpalce=True)
+                self.mindex.index = self.mindex['_&%@x']
+                self.mindex.drop('_&%@x',inplace=True,axis=1)
+                __ss.drop(labels,inplace=True)
+                __ss.index = self.mindex.index
+            self.__ss = __ss
+        else:
+            ms = self.copy()
+            ms.drop(labels,inplace=True)
+            return ms
+
+   
     def equals(self,other):
         '''
         Test whether two MulSeries are the same.
@@ -295,8 +317,7 @@ class MulSeries:
     def __setitem__(self,key, values):
         self.__ss[key] = values
         if not isinstance(key,list) and key not in self.pindex:
-            self.index.loc[key] = None
-
+            self.index.loc[key] = [None]*self.index.shape[1]
     
     def _xloc_get_factory(self,attr):
         def _xloc_get(key):
@@ -316,7 +337,7 @@ class MulSeries:
         def _xloc_set(key,values):
             getattr(self.__ss,attr)[key] = values
             if attr == 'loc' and not isinstance(key,list) and key not in self.pindex:
-                self.index.loc[key] = None
+                self.index.loc[key] = [None]*self.index.shape[1]
         return _xloc_set
 
     def _mloc2pos(self,key):

@@ -18,6 +18,32 @@ def get_data():
                     columns=columns)
     return md,index,columns
 
+def test_loc():
+    md, _, _ = get_data()
+    md.loc['e'] = [5,7]
+    assert eq(md.loc['e'].values,[5,7])
+    assert md.shape == (4,2)
+    assert eq(md.mindex.loc['e'].values,[None]*2)
+
+    md, _, _ = get_data()
+    md.loc['e'] = MulSeries([5,7],
+        index=pd.DataFrame(index=['c','d']),
+        name=pd.Series([8,9],index=['x','y']))
+    # print('\n',md)
+    assert eq(md.loc['e'].values,[5,7])
+    assert md.shape == (4,2)
+    assert eq(md.mindex.loc['e'].values,[8,9])
+
+    md, _, _ = get_data()
+    md.loc[:,'e'] = MulSeries([5,7,8],
+        index=pd.DataFrame(index=['a','b','b']),
+        name=pd.Series([8,9],index=['f','g']))
+    # print('\n',md)
+    assert eq(md.loc[:,'e'].values,[5,7,8])
+    assert md.shape == (3,3)
+    assert eq(md.mcols.loc['e'].values,[8,9])
+
+
 def test_insert():
     mf,_,_ = get_data()
     mf2 = mf.copy()
@@ -65,7 +91,7 @@ def test_insert():
                     axis=0,
                     inplace=False)
     assert eq(mf2.index.loc['e'],[9,10])
-    print('\n',mf2)
+    # print('\n',mf2)
 
 
 def test_init():
@@ -174,6 +200,22 @@ def test_get_setitem():
     md['c'] = [5,5,5]
     # print('================')
     assert eq(md.loc[:,'c'].values,[5,5,5])
+
+    md,index,columns = get_data()
+    md['e'] = [6,7,8]
+    assert eq(md.loc[:,'e'].values,[6,7,8])
+    assert md.shape == (3,3)
+    assert eq(md.mcols.loc['e'].values,[None]*2)
+
+    md,index,columns = get_data()
+    md['e'] = MulSeries([6,7,8],
+        index=pd.DataFrame(index=['a','b','b']),
+        name=pd.Series([8,9],index=['f','g']))
+    assert eq(md.loc[:,'e'].values,[6,7,8])
+    assert md.shape == (3,3)
+    print('\n',md)
+    assert eq(md.mcols.loc['e'].values,[8,9])
+
 
 
 def test_transpose():
@@ -399,7 +441,7 @@ def test_drop_duplicates():
 
     md2 = md.drop_duplicates(mloc={'g':7})
     assert eq(md2.values,[[1,2],[8,9]])
-    print('\n',md2)
+    # print('\n',md2)
 
     md.drop_duplicates('c',inplace=True)
     assert eq(md.values,[[1,2],[8,9]])
@@ -433,7 +475,7 @@ def test_iloc():
 
 def test_groupby():
     md, index, columns = get_data()
-    print('\n',md.groupby('y').mean(axis=0))
+    # print('\n',md.groupby('y').mean(axis=0))
     # for key, group in md.groupby('y'):
     #     if key == 6:
     #         print(key,'\n',group)
@@ -540,7 +582,7 @@ def test_melt():
                     columns=columns)
     
     mf = md.melt()
-    print(mf)
+    # print(mf)
     # print(mf)
     assert mf.shape == (md.shape[0]*md.shape[1],7)
     assert eq(mf['value'].values,np.ravel(md.values))

@@ -10,8 +10,8 @@ tabulate.PRESERVE_WHITESPACE = True
 
 #TODO itercols
 #TODO iloc, loc accept boolean series as input?
-#TODO insert
-#TODO iloc, loc, setitem, create new rows or columns when the label is not in the primary index/columns.
+#TODO insert doc
+#TODO Drop doc
 #TODO print display improve. 1) align columns dataframe and values dataframes. 2) in case index and columns have names like the example in pivot_table doc.
 
 class MulDataFrame:
@@ -384,11 +384,14 @@ class MulDataFrame:
         
     
     def __setitem__(self,key, values):
-        mname = None
         if isinstance(values,md.MulSeries):
-            values = values.ds
             mname = values.name
+            values = values.ds
+        else:
+            mname = [None]*self.mcols.shape[1]
+        self.__df._update_super_index()
         self.__df[key] = values
+        # print(mname)
         if not isinstance(key,list) and key not in self.pcols:
             self.mcols.loc[key] = mname
 
@@ -428,15 +431,16 @@ class MulDataFrame:
             if attr == 'iloc':
                 getattr(self.__df,attr)[idx,col] = values
             else:
-                mname = None
                 if isinstance(values,md.MulSeries):
-                    values = values.ds
                     mname = values.name
+                    values = values.ds
+                else:
+                    mname = None
                 getattr(self.__df,attr)[idx,col] = values
-                if idx is slice(None) and not isinstance(col,list) and col not in self.pcols:
-                    self.mcols.loc[col] = mname
-                if col is slice(None) and not isinstance(idx,list) and idx not in self.pindex:
-                    self.mindex.loc[idx] = mname
+                if idx == slice(None) and not isinstance(col,list) and col not in self.pcols:
+                    self.mcols.loc[col] = mname if mname is not None else [None]*self.mcols.shape[1]
+                if col == slice(None) and not isinstance(idx,list) and idx not in self.pindex:
+                    self.mindex.loc[idx] = mname if mname is not None else [None]*self.mindex.shape[1]
         return _xloc_set
     
     def _mloc2pos(self,key):
@@ -1162,6 +1166,45 @@ class MulDataFrame:
             df.iloc[rstart:rend,-1] = row.values
         
         return df
+
+    def drop(self,labels,mloc=None,inplace=False,axis=0):
+        if inplace:
+            self.__df._update_super_index()
+            __df = self.__df
+            self.__df = None
+            if axis == 0:
+                if mloc is None:
+                    self.mindex.drop(labels,inplace=True)
+                    __df.drop(labels,inplace=True)
+                else:
+                    __df.index = self.mindex[mloc]
+                    self.mindex['_&%@x'] = self.mindex.index
+                    self.mindex.index = self.mindex[mloc]
+                    self.mindex.drop(labels,inpalce=True)
+                    self.mindex.index = self.mindex['_&%@x']
+                    self.mindex.drop('_&%@x',inplace=True,axis=1)
+                    __df.drop(labels,inplace=True)
+                    __df.index = self.mindex.index
+            else:
+                if mloc is None:
+                    self.mcols.drop(labels,inplace=True)
+                    __df.drop(labels,inplace=True,axis=1)
+                else:
+                    __df.columns = self.mcols[mloc]
+                    self.mcols['_&%@x'] = self.mcols.index
+                    self.mcols.index = self.mcols[mloc]
+                    self.mcols.drop(labels,inpalce=True)
+                    self.mcols.index = self.mcols['_&%@x']
+                    self.mcols.drop('_&%@x',inplace=True,axis=1)
+                    __df.drop(labels,inplace=True,axis=1)
+                    __df.columns = self.mcols.index
+            self.__df = __df
+        else:
+            mf = self.copy()
+            mf.drop(labels,mloc,True,axis)
+            return mf
+
+
 
     def insert(self,label,value,loc=None,name=None, inplace=True, axis=1):
         '''

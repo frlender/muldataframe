@@ -334,7 +334,7 @@ class MulGroupBy(Generic[M]):
 
 def fmtSeries(ss:pd.Series):
     if ss.shape[0] == 0:
-        return str(ss)
+        return ss
     else:
         df = pd.DataFrame(ss)
         if ss.name is None:
