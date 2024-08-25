@@ -16,6 +16,9 @@ IndexAgg = Literal['same_only'] | Literal['list'] | Literal['tuple']
 
 OPS = ['add','sub','mul','div','truediv','floordiv','mod','pow']
 
+def array_like(x):
+    return isinstance(x,list) or isinstance(x,pd.Series) or isinstance(x,pd.Index) or isinstance(x,np.ndarray)
+
 class Accessor:
     def __init__(self,getter,setter,max_idx=1):
         self.getter = getter

@@ -337,6 +337,22 @@ def get_data():
     ms = MulSeries([1,8,9],index=index,name=columns.loc['c'])
     return ms,index,ms.name
 
+def test_loc_item():
+    ms,_,_ = get_data()
+    ms2 = ms.loc[ms>2]
+    assert eq(ms2.values, [8,9])
+    assert eq(ms2.pindex.values,['b','b'])
+
+    ms3 = ms[ms>2]
+    assert ms3 == ms2
+
+    ms[ms>2] = 5
+    assert eq(ms.values,[1,5,5])
+
+    ms.loc[ms>2] = 5
+    assert eq(ms.values,[1,5,5])
+
+
 def test_insert():
     ms, _, _ = get_data()
     ms2 = ms.copy()

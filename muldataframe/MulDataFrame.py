@@ -367,14 +367,22 @@ class MulDataFrame:
     
     def __getitem__(self,key):
         # print('--get-item',md)
+        if isinstance(key,md.MulSeries):
+            key = key.ds
         new_df = self.__df[key]
         if  isinstance(new_df,pd.DataFrame):
-            new_mcols = self.mcolumns.loc[key]
-            mx = MulDataFrame(new_df.values,
-                                index=self.index,
-                                columns=new_mcols,
-                                columns_copy=False)
-            return mx
+            if not isinstance(key,pd.Series):
+                new_mcols = self.mcolumns.loc[key]
+                mx = MulDataFrame(new_df.values,
+                                    index=self.index,
+                                    columns=new_mcols,
+                                    columns_copy=False)
+                return mx
+            else:
+                new_mindex = self.mindex.loc[key]
+                return MulDataFrame(new_df.values,
+                index=new_mindex,columns=self.mcols,
+                index_copy=False)
         elif isinstance(new_df,pd.Series):
             new_mcols = self.mcolumns.loc[key]
                 # print('ok')
@@ -388,6 +396,8 @@ class MulDataFrame:
         
     
     def __setitem__(self,key, values):
+        if isinstance(key,md.MulSeries):
+            key = key.ds
         if isinstance(values,md.MulSeries):
             mname = values.name
             values = values.ds
@@ -396,12 +406,16 @@ class MulDataFrame:
         self.__df._update_super_index()
         self.__df[key] = values
         # print(mname)
-        if not isinstance(key,list) and key not in self.pcols:
+        if not cmm.array_like(key) and key not in self.pcols:
             self.mcols.loc[key] = mname
 
     def _xloc_get_factory(self,attr):
         def _xloc_get(key):
             idx, col = self._get_indices(key)
+            if isinstance(idx,md.MulSeries):
+                idx = idx.ds
+            if isinstance(col,md.MulSeries):
+                col = col.ds
             new_df = getattr(self.__df,attr)[idx,col]
 
             if isinstance(new_df,pd.DataFrame) or \
@@ -432,6 +446,10 @@ class MulDataFrame:
     def _xloc_set_factory(self,attr):
         def _xloc_set(key,values):
             idx, col = self._get_indices(key)
+            if isinstance(idx,md.MulSeries):
+                idx = idx.ds
+            if isinstance(col,md.MulSeries):
+                col = col.ds
             if attr == 'iloc':
                 getattr(self.__df,attr)[idx,col] = values
             else:
@@ -441,9 +459,9 @@ class MulDataFrame:
                 else:
                     mname = None
                 getattr(self.__df,attr)[idx,col] = values
-                if idx == slice(None) and not isinstance(col,list) and col not in self.pcols:
+                if isinstance(idx,slice) and idx == slice(None) and not cmm.array_like(col) and col not in self.pcols:
                     self.mcols.loc[col] = mname if mname is not None else [None]*self.mcols.shape[1]
-                if col == slice(None) and not isinstance(idx,list) and idx not in self.pindex:
+                if isinstance(col,slice) and col == slice(None) and not cmm.array_like(idx) and idx not in self.pindex:
                     self.mindex.loc[idx] = mname if mname is not None else [None]*self.mindex.shape[1]
         return _xloc_set
     

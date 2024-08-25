@@ -18,6 +18,31 @@ def get_data():
                     columns=columns)
     return md,index,columns
 
+
+def test_loc_item():
+    mf, _, _ = get_data()
+    mf2 = mf[mf['c']>1]
+    assert eq(mf2.values,[[8,9],[8,10]])
+
+    mf3 = mf.loc[mf['c']>1]
+    assert mf2 == mf3
+
+    mf2 = mf.loc[:,mf.loc['a']>1]
+    assert eq(mf2.values,[[2],[9],[10]])
+
+    mf3 = mf.loc[mf['c']>1,mf.loc['a']>1]
+    assert eq(mf3.values,[[9],[10]])
+
+    mf[mf['c']>1] = 5
+    assert eq(mf.iloc[1:].values,[[5,5],[5,5]])
+
+    
+    print('\n',mf.loc[mf['c']>1,mf.loc['a']>1])
+    mf.loc[mf['c']>1,mf.loc['a']>1] = [[8],[9]]
+    # assert eq(mf.values,[[1,2],[5,8],[5,9]])
+
+
+
 def test_drop():
     ms, _, _ = get_data()
     ms2 = ms.copy()
@@ -66,6 +91,10 @@ def test_loc():
     assert eq(md.loc[:,'e'].values,[5,7,8])
     assert md.shape == (3,3)
     assert eq(md.mcols.loc['e'].values,[8,9])
+
+    md, _, _ = get_data()
+    md.loc[:,['c','d']] = [[1,2],[5,5],[6,7]]
+    assert eq(md.values,[[1,2],[5,5],[6,7]])
 
 
 def test_insert():

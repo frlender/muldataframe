@@ -9,6 +9,8 @@ import muldataframe.ValFrameBase as vfb
 import tabulate
 tabulate.PRESERVE_WHITESPACE = True
 
+# import collections.abc
+
 #TODO: query for mulseries and muldataframe
 
 class MulSeries:
@@ -421,6 +423,8 @@ class MulSeries:
 
 
     def __getitem__(self,key):
+        if isinstance(key,MulSeries):
+            key = key.ds
         new_ss = self.__ss[key]
         if(isinstance(new_ss,pd.Series)):
             idx_new = self.mindex.loc[key]
@@ -434,12 +438,16 @@ class MulSeries:
             return new_ss
     
     def __setitem__(self,key, values):
+        if isinstance(key,MulSeries):
+            key = key.ds
         self.__ss[key] = values
-        if not isinstance(key,list) and key not in self.pindex:
+        if not cmm.array_like(key) and key not in self.pindex:
             self.index.loc[key] = [None]*self.index.shape[1]
     
     def _xloc_get_factory(self,attr):
         def _xloc_get(key):
+            if isinstance(key,MulSeries):
+                key = key.ds
             new_ss = getattr(self.__ss,attr)[key]
             if(isinstance(new_ss,pd.Series)):
                 idx_new = getattr(self.mindex,attr)[key]
@@ -454,8 +462,10 @@ class MulSeries:
     
     def _xloc_set_factory(self,attr):
         def _xloc_set(key,values):
+            if isinstance(key,MulSeries):
+                key = key.ds
             getattr(self.__ss,attr)[key] = values
-            if attr == 'loc' and not isinstance(key,list) and key not in self.pindex:
+            if attr == 'loc' and not cmm.array_like(key) and key not in self.pindex:
                 self.index.loc[key] = [None]*self.index.shape[1]
         return _xloc_set
 
