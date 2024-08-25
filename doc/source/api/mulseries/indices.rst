@@ -40,4 +40,6 @@ MulSeries
    drop_duplicates
    call
    groupby
+   insert
+   drop
 

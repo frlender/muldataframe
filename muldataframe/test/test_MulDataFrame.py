@@ -18,6 +18,30 @@ def get_data():
                     columns=columns)
     return md,index,columns
 
+def test_drop():
+    ms, _, _ = get_data()
+    ms2 = ms.copy()
+    ms3 = ms2.drop('b')
+    assert ms2 == ms
+    assert ms3.shape == (1,2)
+    assert ms3.index.shape == (1,2)
+
+    ms2 = ms.drop(2,mloc='y')
+    assert ms2.shape == (2,2)
+    assert ms2.index.shape == (2,2)
+    assert eq(ms2.pindex.values,['b','b'])
+    assert ms2.pindex.name == ms.pindex.name
+    assert ms2.mcols.shape == (2,2)
+
+    ms.drop(5,mloc='f',inplace=True,axis=1)
+    assert ms.shape == (3,1)
+    assert ms.mcols.shape == (1,2)
+    assert eq(ms.values,[[2],[9],[10]])
+    mso, _, _ = get_data()
+    assert ms.pcols.name == mso.pcols.name
+    assert ms.mcols.shape == (1,2)
+
+
 def test_loc():
     md, _, _ = get_data()
     md.loc['e'] = [5,7]

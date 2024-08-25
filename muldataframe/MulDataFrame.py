@@ -252,9 +252,9 @@ class MulDataFrame:
             return self.index
         elif name in ['mcolumns','mcols']:
             return self.columns
-        elif name in ['pindex','pidx']:
+        elif name in ['primary_index','pindex','pidx']:
             return self.index.index
-        elif name in ['pcolumns','pcols']:
+        elif name in ['primary_columns','pcolumns','pcols']:
             return self.columns.index
         elif name == 'shape':
             return self.__df.shape
@@ -290,6 +290,10 @@ class MulDataFrame:
             name = 'columns'
             cmm.checkSetIdxValue(self,name,value)
             super().__setattr__(name, value)
+        elif name in ['primary_index','pindex','pidx']:
+            self.index.index = value
+        elif name in ['primary_columns','pcolumns','pcols']:
+            self.columns.index = value
         else:
             super().__setattr__(name, value)
 
@@ -1168,21 +1172,73 @@ class MulDataFrame:
         return df
 
     def drop(self,labels,mloc=None,inplace=False,axis=0):
+        '''
+        Remove rows or columns from MulDataFrame by labels.
+
+        Remove rows or columns by specifying labels and corresponding axis. Labels can be primary index/columns labels or labels in a column in the index/columns dataframe.
+
+        Parameters
+        ------------
+        labels : single label or list-like
+            Primary index (``axis=0``) or columns (``axis=1``) labels if ``mloc=None`` or labels in a column of the index or columns dataframe specified by ``mloc``.
+        mloc : None, str, number, or hashable object
+            Column name in the index (``axis=0``) or columns (``axis=1``) dataframe. if ``mloc=None``, use the primary index or columns to select removed rows or columns. Otherwise, use the labels in the specified column to select removed rows or columns.
+        inplace : bool, default False
+            Whether to modify the MulDataFrame inplace or return a new MulDataFrame with rows or columns removed.
+        axis : {0,1}, default 0
+            Whether to remove rows (``axis=0``) or columns (``axis=1``).
+        
+        Returns
+        --------
+        MulSeries or None
+            returns ``None`` if ``inplace=True``.
+        
+        Examples
+        ---------
+        >>> index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                     index=['a','b','b'],
+                     columns=['x','y'])
+        >>> columns = pd.DataFrame([[5,7],[3,6]],
+                        index=['c','d'],
+                        columns=['f','g'])
+        >>> mf = MulDataFrame([[1,2],[8,9],[8,10]],index=index,
+                    columns=columns)
+        >>> mf.drop('b')
+        (1, 2)    g  7  6
+                  f  5  3
+                     c  d
+        --------  ---------
+           x  y      c  d
+        a  1  2   a  1  2
+        >>> mf.drop(5,mloc='f',inplace=True,axis=1)
+        >>> mf
+        (3, 1)    g   6
+                  f   3
+                      d
+        --------  ------
+           x  y       d
+        a  1  2   a   2
+        b  3  6   b   9
+        b  5  6   b  10
+        '''
         if inplace:
             self.__df._update_super_index()
             __df = self.__df
             self.__df = None
+            RAND_KEY = '_&%@x'
             if axis == 0:
                 if mloc is None:
                     self.mindex.drop(labels,inplace=True)
                     __df.drop(labels,inplace=True)
                 else:
                     __df.index = self.mindex[mloc]
-                    self.mindex['_&%@x'] = self.mindex.index
+                    pindex_name = self.pindex.name
+                    self.mindex[RAND_KEY] = self.mindex.index
                     self.mindex.index = self.mindex[mloc]
-                    self.mindex.drop(labels,inpalce=True)
-                    self.mindex.index = self.mindex['_&%@x']
-                    self.mindex.drop('_&%@x',inplace=True,axis=1)
+                    self.mindex.drop(labels,inplace=True)
+                    self.mindex.index = self.mindex[RAND_KEY]
+                    self.pindex.name = pindex_name
+                    self.mindex.drop(RAND_KEY,inplace=True,axis=1)
                     __df.drop(labels,inplace=True)
                     __df.index = self.mindex.index
             else:
@@ -1191,10 +1247,12 @@ class MulDataFrame:
                     __df.drop(labels,inplace=True,axis=1)
                 else:
                     __df.columns = self.mcols[mloc]
+                    pcols_name = self.pcols.name
                     self.mcols['_&%@x'] = self.mcols.index
                     self.mcols.index = self.mcols[mloc]
-                    self.mcols.drop(labels,inpalce=True)
+                    self.mcols.drop(labels,inplace=True)
                     self.mcols.index = self.mcols['_&%@x']
+                    self.pcols.name = pcols_name
                     self.mcols.drop('_&%@x',inplace=True,axis=1)
                     __df.drop(labels,inplace=True,axis=1)
                     __df.columns = self.mcols.index
@@ -1217,7 +1275,7 @@ class MulDataFrame:
         label : str, number, or hashable object
             Label of the inserted column or row
         value : Scalar, Series, array-like Content or MulSeries 
-            Content of the inserted column.
+            Content of the inserted column or row.
         loc : None or int
             Insertion index. Must verify 0 <= loc <= MulDataFrame.shape[1] if ``axis==1`` or 0 <= loc <= MulDataFrame.shape[0] if ``axis==0``. If ``loc=None``, insert at the end of the MulDataFrame, namely an append operation.
         name : Scalar, Series, or array-like

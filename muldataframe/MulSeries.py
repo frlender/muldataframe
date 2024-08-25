@@ -203,9 +203,9 @@ class MulSeries:
             return getattr(self,name.lstrip('m'))
         elif name == 'midx':
             return self.index
-        elif name in ['pindex','pidx']:
+        elif name in ['primary_index','pindex','pidx']:
             return self.index.index
-        elif name == 'pname':
+        elif name in ['primary_name','pname']:
             return self.name.name
         elif name == 'shape':
             return self.__ss.shape
@@ -229,29 +229,148 @@ class MulSeries:
         return self.__ss is not None
 
     def __setattr__(self, name: str, value: Any) -> None:
-        if name == 'ss':
+        if name in ['ss','ds']:
             raise AttributeError(f"ss is a read-only attribute.")
-        if name in ['index','mindex','midx']:
+        elif name in ['index','mindex','midx']:
             cmm.checkSetIdxValue(self,'index',value)
-            super().__setattr__(name, value)
+            super().__setattr__('index', value)
+        elif name in ['manme']:
+            super().__setattr__('name', value)
+        elif name in ['primary_index','pindex','pidx']:
+            self.index.index = value
+        elif name in ['primary_name','pname']:
+            self.name.name = value
         else:
             super().__setattr__(name, value)
 
     def __len__(self):
         return self.shape[0]
     
-    def drop(self,labels,mloc=None,inplace=False):
+    def insert(self,label,value,loc=None,name=None,inplace=True):
+        '''
+        Insert a value into MulSeries at specified location.
+
+        Duplicate labels are allowed. It is an append operation if ``loc=None``.
+
+        Parameters
+        ------------
+        label : str, number, or hashable object
+            Label of the inserted value
+        value : Scalar
+            The inserted value.
+        loc : int
+            Insertion index. Must verify 0 <= loc <= MulSeries.shape[0] if ``axis==0``. If ``loc=None``, insert at the end of the MulSeries, namely an append operation.
+        name : Scalar, Series, or array-like
+            The metadata of ``value`` inserted into the index dataframe.
+        inplace : bool, default True
+            Whether insert inplace or return a new MulSeries.
+
+        Returns
+        ---------
+        None or MulSeries
+            returns ``None`` if ``inplace=True``
+        
+        Examples
+        ---------
+        >>> import pandas as pd
+        >>> import muldataframe as md
+        >>> index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                     index=['a','b','b'],
+                     columns=['x','y'])
+        >>> columns = pd.DataFrame([[5,7],[3,6]],
+                        index=['c','d'],
+                        columns=['f','g'])
+        >>> ms = MulSeries([1,8,9],index=index,name=columns.loc['c'])
+        >>> ms.insert('e',7,loc=1,name=[8,9],inplace=False)
+        (4,)     g  7
+                 f  5
+                    c
+        -------  ------
+           x  y     c
+        a  1  2  a  1
+        e  8  9  e  7
+        b  3  6  b  8
+        b  5  6  b  9
+        '''
+        loc = self.shape[0] if loc is None else loc
         if inplace:
+            # self.__ss._update_super_index()
+            ds = self.ds
+            self.__ss = None
+            dsf = pd.DataFrame(ds,copy=False).transpose()
+            dsf.insert(loc,label,value)
+            
+            mindext = self.mindex.transpose()
+            if name is None:
+                name = [None]*self.mindex.shape[1]
+            mindext.insert(loc,label,name)
+            self.mindex = mindext.transpose()
+            # print('\t',mindext)
+            # print('\t',self.index)
+
+            self.__ss = dsf.iloc[0]
+        else:
+            ms = self.copy()
+            ms.insert(label,value,loc,name,True)
+            return ms
+
+    
+    def drop(self,labels,mloc=None,inplace=False):
+        '''
+        Remove values from MulSeres by labels.
+
+        Parameters
+        ------------
+        labels : single label or list-like
+            primary index labels if ``mloc=None`` or labels in a column of the index dataframe specified by ``mloc``.
+        mloc : None, str, number, or hashable object
+            Column name in the index dataframe. if ``mloc=None``, use the primary index to select removed values. Otherwise, use the labels in the specified column to select removed values.
+        inplace : bool, default False
+            Whether to modify the MulSeries inplace or return a new MulSeries with values removed.
+        
+        Returns
+        --------
+        MulSeries or None
+            returns ``None`` if ``inplace=True``.
+        
+        Examples
+        -----------
+        >>> import pandas as pd
+        >>> import muldataframe as md
+        >>> index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                     index=['a','b','b'],
+                     columns=['x','y'])
+        >>> columns = pd.DataFrame([[5,7],[3,6]],
+                        index=['c','d'],
+                        columns=['f','g'])
+        >>> ms = MulSeries([1,8,9],index=index,name=columns.loc['c'])
+        >>> ms.drop('b')
+        (1,)     g  7
+                 f  5
+                    c
+        -------  ------
+           x  y     c
+        a  1  2  a  1
+        >>> ms.drop(6,mloc='y')
+        (1,)     g  7
+                 f  5
+                    c
+        -------  ------
+           x  y     c
+        a  1  2  a  1
+        '''
+        if inplace:
+            self.__ss._update_super_index()
             __ss = self.__ss
             self.__ss = None
             if mloc is None:
-                __ss.drop(labels,inpalce=True)
-                self.mindex.drop(labels,inpalce=True)
+                __ss.drop(labels,inplace=True)
+                self.mindex.drop(labels,inplace=True)
             else:
                 __ss.index = self.mindex[mloc]
                 self.mindex['_&%@x'] = self.mindex.index
                 self.mindex.index = self.mindex[mloc]
-                self.mindex.drop(labels,inpalce=True)
+                self.mindex.drop(labels,inplace=True)
                 self.mindex.index = self.mindex['_&%@x']
                 self.mindex.drop('_&%@x',inplace=True,axis=1)
                 __ss.drop(labels,inplace=True)
@@ -259,7 +378,7 @@ class MulSeries:
             self.__ss = __ss
         else:
             ms = self.copy()
-            ms.drop(labels,inplace=True)
+            ms.drop(labels,mloc,inplace=True)
             return ms
 
    

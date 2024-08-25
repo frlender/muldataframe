@@ -46,4 +46,5 @@ MulDataFrame
    groupby
    melt
    insert
+   drop
 

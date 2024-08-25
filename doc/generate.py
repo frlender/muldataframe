@@ -72,7 +72,7 @@ for ax in ss_attrs:
          ff.write(ss_dyn_attrs[ax])
 
 
-methods = ['__iter__','copy','equals','reset_index','drop_duplicates','call','groupby']
+methods = ['__iter__','copy','equals','reset_index','drop_duplicates','call','groupby','insert','drop']
 method_fnames = []
 for ax in methods:
    fname = ax+'.rst'

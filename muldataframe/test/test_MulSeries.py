@@ -337,6 +337,40 @@ def get_data():
     ms = MulSeries([1,8,9],index=index,name=columns.loc['c'])
     return ms,index,ms.name
 
+def test_insert():
+    ms, _, _ = get_data()
+    ms2 = ms.copy()
+    ms2.insert('e',7)
+    # print('\n',ms2)
+    assert eq(ms2.pindex.tolist(),['a','b','b','e'])
+    assert eq(ms2.values, [1,8,9,7])
+    assert eq(ms2.mindex.iloc[-1].values,[None]*2)
+
+    ms2 = ms.insert('e',7,1,[8,9],False)
+    print('\n',ms2)
+    assert eq(ms2.pindex.tolist(),['a','e','b','b'])
+    assert eq(ms2.values, [1,7,8,9])
+    assert eq(ms2.mindex.iloc[1].values,[8,9])
+
+
+def test_drop():
+    ms, _, _ = get_data()
+    ms2 = ms.copy()
+    ms3 = ms2.drop('b')
+    assert ms2 == ms
+    assert ms3.shape == (1,)
+    assert ms3.index.shape == (1,2)
+    # print('\n',ms3)
+
+    ms2.drop('a',inplace=True)
+    assert ms2.shape == (2,)
+    assert eq(ms2.values, [8,9])
+
+    ms2 = ms.drop(6,mloc='y')
+    assert ms2.shape == (1,)
+    assert ms2.index.shape == (1,2)
+
+
 def get_data2():
     index = pd.DataFrame([[1,2],[3,6],[5,6]],
                      index=['a','b','b'],
