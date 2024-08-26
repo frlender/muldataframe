@@ -17,8 +17,12 @@ MulSeries
    ss
    ds
    shape
+   primary_index
+   primary_name
    mindex
    mname
+   pindex
+   pname
 
 .. toctree::
    :maxdepth: 1

@@ -356,6 +356,13 @@ def test_mloc_nloc():
     md2 = md.mloc[[[1,3],6]]
     assert eq(md2.values,[8,9])
 
+    # md.index.insert(2,'z',[1,2,3])
+    # md.index.columns = ['x','y','y']
+    # print('xxxxxxxxxxxx')
+    # print('\n',md.mloc[{'y':2}])
+    # print('\n',md.mloc[{'y':2}].name)
+    md,index,columns = get_data()
+
     md2 = md.nloc[[..., 6]]
     assert eq(md2.values,[[8,9],[8,10]])
     md2 = md.nloc[{1:6}]

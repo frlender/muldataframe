@@ -6,7 +6,8 @@ name = 'MulDataFrame'
 
 attrs_only = ['index','columns',
          'values','df','ds','shape',
-         'mindex','mcolumns']
+         'primary_index', 'primary_columns',
+         'mindex','mcolumns','mcols','pindex','pcolumns','pcols']
 attrs_indexing = ['iloc','loc','mloc','nloc']
 
 dyn_attrs = {
@@ -37,7 +38,35 @@ dyn_attrs = {
    'mcolumns':
       '''
       Alias for :doc:`MulDataFrame.columns <columns>`.
+      ''',
+   'mcols':
       '''
+      Alias for :doc:`MulDataFrame.columns <columns>`.
+      ''',
+   'primary_index':
+      '''
+      The primary index.
+      
+      Shorthand for ``MulDataFrame.index.index``.
+      ''',
+   'pindex':
+      '''
+      Alias for :doc:`MulDataFrame.primary_index <primary_index>`.
+      ''',
+   'primary_columns':
+      '''
+      The primary columns.
+      
+      Shorthand for ``MulDataFrame.columns.index``.
+      ''',
+   'pcolumns':
+      '''
+      Alias for :doc:`MulDataFrame.primary_columns <primary_columns>`.
+      ''',
+   'pcols':
+      '''
+      Alias for :doc:`MulDataFrame.primary_columns <primary_columns>`.
+      ''',
 }
 
 

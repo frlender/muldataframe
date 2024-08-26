@@ -17,8 +17,14 @@ MulDataFrame
    df
    ds
    shape
+   primary_index
+   primary_columns
    mindex
    mcolumns
+   mcols
+   pindex
+   pcolumns
+   pcols
 
 .. toctree::
    :maxdepth: 1

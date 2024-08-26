@@ -85,11 +85,15 @@ class MulSeries:
         
         self.index = index
         '''
-        The index dataframe. Use :doc:`MulSeries.mindex <mindex>` as an alias for this attribute.
+        The index dataframe. 
+
+        Use :doc:`MulSeries.mindex <mindex>` as an alias for this attribute.
         '''
         self.name = name
         '''
-        The name series. Use :doc:`MulSeries.mname <mname>` as an alias for this attribute.
+        The name series. 
+
+        Use :doc:`MulSeries.mname <mname>` as an alias for this attribute.
         '''
         # print(hasattr(self, 'index'))
         self.__ss = ValSeries(self,ss) # private
@@ -97,17 +101,23 @@ class MulSeries:
         self.iloc = cmm.Accessor(self._xloc_get_factory('iloc'),
                              self._xloc_set_factory('iloc'))
         '''
-        Position-based indexing. It is the same as the `Series.iloc <https://pandas.pydata.org/docs/reference/api/pandas.Series.iloc.html>`_ of the values series except that it returns a MulSeries with the index dataframe properly sliced. If the return value is a scalar, it returns the scalar.
+        Position-based indexing. 
+
+        It is the same as the `Series.iloc <https://pandas.pydata.org/docs/reference/api/pandas.Series.iloc.html>`_ of the values series except that it returns a MulSeries with the index dataframe properly sliced. If the return value is a scalar, it returns the scalar.
         '''
         self.loc = cmm.Accessor(self._xloc_get_factory('loc'),
                             self._xloc_set_factory('loc'))
         '''
-        Label-based indexing. It is the same as `Series.loc <https://pandas.pydata.org/docs/reference/api/pandas.Series.loc.html>`_ of the values series except that it returns a MulSeries with the index dataframe properly sliced. If the return value is a scalar, it returns the scalar.
+        Label-based indexing. 
+        
+        It is the same as `Series.loc <https://pandas.pydata.org/docs/reference/api/pandas.Series.loc.html>`_ of the values series except that it returns a MulSeries with the index dataframe properly sliced. If the return value is a scalar, it returns the scalar.
         '''
         self.mloc = cmm.Accessor(self._mloc_get,
                              self._mloc_set)
         '''
-        Flexible hierachical indexing on the index dataframe. The slicer can be a list or a dict. Check introduction to mloc ??? for detailed usage.
+        Flexible hierachical indexing on the index dataframe. 
+        
+        The slicer can be a list or a dict. Check introduction to mloc ??? for detailed usage. 
         
         If a list is used, its length should be less than or equal to the columns length of the index dataframe. The hierarchical indexing order is from the leftmost column to the rightmost. Use ``...`` as ``:`` in the list to select all elements in a column.
 
@@ -147,13 +157,15 @@ class MulSeries:
         2  b  g  h  2   3
         0  a  b  c  0   1
 
-        Note in the above example that if the index dataframe's columns have duplicate names, use the **last** column for indexing.
+        Note in the above example that if the index dataframe's columns have duplicate names, use the **last** column for dict indexing.
         
         '''
         self.nloc = cmm.Accessor(self._nloc_get,
                              self._nloc_set)
         '''
-        Flexible hierachical indexing on the index dataframe. The slicer can be a list or a dict. Check introduction to mloc ??? for detailed usage.
+        Flexible hierachical indexing on the index dataframe using positions. 
+        
+        The slicer can be a list or a dict. Check introduction to mloc ??? for detailed usage. 
         
         If a list is used, it behaves exactly like :doc:`mloc`.
 
@@ -180,7 +192,7 @@ class MulSeries:
         2  b  g  h  2   3
         0  a  b  c  0   1
 
-        Note that using a dict in :doc:`mloc`, you can only select the last ``y`` column in the index dataframe. Using ``nloc`` you are able to select the first ``y`` column.
+        Note that with a dict in :doc:`mloc`, you can only select the last ``y`` column in the index dataframe. Using ``nloc`` you are able to select the first ``y`` column.
         '''
 
     def __repr__(self):

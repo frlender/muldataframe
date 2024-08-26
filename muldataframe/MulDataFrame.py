@@ -115,11 +115,15 @@ class MulDataFrame:
 
         self.index = index
         '''
-        The index dataframe. Use :doc:`MulDataFrame.mindex <mindex>` as an alias for this attribute.
+        The index dataframe. 
+        
+        Use :doc:`MulDataFrame.mindex <mindex>` as an alias for this attribute.
         '''
         self.columns = columns
         '''
-        The columns dataframe. Use :doc:`MulDataFrame.mcolumns <mcolumns>` as an alias for this attribute.
+        The columns dataframe. 
+        
+        Use :doc:`MulDataFrame.mcolumns <mcolumns>` as an alias for this attribute.
         '''
         self.__df = ValDataFrame(self,df)
 
@@ -131,17 +135,23 @@ class MulDataFrame:
         self.iloc = cmm.Accessor(self._xloc_get_factory('iloc'),
                              self._xloc_set_factory('iloc'),2)
         '''
-        Position-based indexing. It is the same as the `DataFrame.iloc <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.iloc.html>`_ of the values dataframe except that it returns a MulDataFrame with the index and the columns dataframes properly sliced. If the return value is a scalar, it returns the scalar.
+        Position-based indexing. 
+        
+        It is the same as the `DataFrame.iloc <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.iloc.html>`_ of the values dataframe except that it returns a MulDataFrame with the index and the columns dataframes properly sliced. If the return value is a scalar, it returns the scalar.
         '''
         self.loc = cmm.Accessor(self._xloc_get_factory('loc'),
                              self._xloc_set_factory('loc'),2)
         '''
-        Label-based indexing. It is the same as the `DataFrame.loc <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.iloc.html>`_ of the values dataframe except that it returns a MulDataFrame with the index and the columns dataframes properly sliced. If the return value is a scalar, it returns the scalar.
+        Label-based indexing. 
+        
+        It is the same as the `DataFrame.loc <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.iloc.html>`_ of the values dataframe except that it returns a MulDataFrame with the index and the columns dataframes properly sliced. If the return value is a scalar, it returns the scalar.
         '''
         self.mloc = cmm.Accessor(self._mloc_get,
                              self._mloc_set,2)
         '''
-        Flexible hierachical indexing on the index and columns dataframes. The row or the columns slicer can be a list or a dict. Check introduction to mloc ??? for detailed usage.
+        Flexible hierachical indexing on the index and columns dataframes. 
+        
+        The row or the columns slicer can be a list or a dict. Check introduction to mloc ??? for detailed usage.
         
         If a list is used, its length should be less than or equal to the columns length of the index or the columns dataframe. The hierarchical indexing order is from the leftmost column to the rightmost. Use ``...`` as ``:`` in the list to select all elements in a column.
 
@@ -159,8 +169,8 @@ class MulDataFrame:
         >>> columns = pd.DataFrame([[5,7],[3,6]],
                         index=['c','d'],
                         columns=['f','g'])
-        >>> md = MulDataFrame([[1,2],[8,9],[8,10]],index=index,columns=columns)
-        >>> ms.mloc[[..., 6],[5]]
+        >>> mf = MulDataFrame([[1,2],[8,9],[8,10]],index=index,columns=columns)
+        >>> mf.mloc[[..., 6],[5]]
         (2,)      g  7   
                   f  5   
                      c   
@@ -172,7 +182,7 @@ class MulDataFrame:
 
         Dictionary indexing:
 
-        >>> md.mloc[:,{'g':6}]
+        >>> mf.mloc[:,{'g':6}]
         (3,)      g  6
                   f  3
                      d
@@ -181,8 +191,18 @@ class MulDataFrame:
         a  1  2  a   2
         b  3  6  b   9
         b  5  6  b  10
-        >>> md.mloc[:,{'g':[6]}].shape
+        >>> mf.mloc[:,{'g':[6]}].shape
         (3,1)
+        >>> mf.index.insert(2,'z',[1,2,3])
+        >>> mf.index.columns = ['x','y','y']
+        >>> mf.mloc[{'y':2}].name
+        x    3
+        y    6
+        y    2
+        Name: b, dtype: int64
+
+        The last example shows that if the index or columns dataframe's columns have duplicate names, use the **last** column for dict indexing. To select other columns of the same name, use list indexing or :doc:`MulDataFrame.nloc <nloc>`.
+
 
         Value assignment:
 
@@ -193,7 +213,9 @@ class MulDataFrame:
         self.nloc = cmm.Accessor(self._nloc_get,
                              self._nloc_set,2)
         '''
-        Flexible hierachical indexing on the index and columns dataframes using numeric positions. The row or the columns slicer can be a list or a dict. 
+        Flexible hierachical indexing on the index and columns dataframes using numeric positions.
+        
+        The row or the columns slicer can be a list or a dict. 
         
         If a list is used, it behaves exactly like :doc:`mloc`.
 

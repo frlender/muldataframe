@@ -3,7 +3,8 @@ from lib import *
 
 ss_attrs_only = ['index','name',
          'values','ss','ds','shape',
-         'mindex','mname']
+         'primary_index','primary_name',
+         'mindex','mname','pindex','pname']
 ss_indexing = ['iloc','loc','mloc','nloc']
 
 ss_attrs = ss_attrs_only+ss_indexing
@@ -29,7 +30,9 @@ ss_attrs = ss_attrs_only+ss_indexing
 ss_dyn_attrs = {
    'values':
       '''
-      The values of the values series. It is not a copy.
+      The values of the values series. 
+      
+      It is not a copy.
       ''',
    'ss':
       '''
@@ -52,7 +55,28 @@ ss_dyn_attrs = {
    'mname':
       '''
       Alias for :doc:`MulSeries.name <name>`.
+      ''',
+   'primary_index':
       '''
+      The primary index.
+      
+      Shorthand for ``MulSeries.index.index``.
+      ''',
+   'pindex':
+      '''
+      Alias for :doc:`MulSeries.primary_index <primary_index>`.
+      ''',
+   'primary_name':
+      '''
+      The primary name.
+      
+      Shorthand for ``MulSeries.name.name``.
+      ''',
+   'pname':
+      '''
+      Alias for :doc:`MulSeries.primary_name <primary_name>`.
+      ''',
+   
 }
 
 fnames = []
