@@ -6,8 +6,10 @@ import muldataframe.ValFrameBase as vfb
 import numpy as np
 import tabulate
 tabulate.PRESERVE_WHITESPACE = True
+import inspect
 # import muldataframe.util as util
 
+#TODO add more test to call method
 #TODO itercols
 #TODO iloc, loc accept boolean series as input?
 #TODO insert doc
@@ -31,15 +33,17 @@ class MulDataFrame:
     index_init : Literal['override'] | Literal['align']
         The option determins how to align the index of the index dataframe to the index of the values dataframe. 
         
-        - 'override': the index of the index dataframe overrides the index of the values dataframe. This mode requires both indices' lengths to be the same. 
-        - 'align': the index of the index dataframe is used to index the values dataframe constructed from the data argument. This mode is only effective if the ``data`` argument implies an index and the ``index`` argument is not ``None``. The resulting indexed values dataframe is used as the final values dataframe. It requires the index of the values dataframe being uinque and the labels of the index dataframe's index exist in the index of the values dataframe. 
+        - 'override' : the index of the index dataframe overrides the index of the values dataframe. This mode requires both indices' lengths to be the same. 
+        - 'align' : the index of the index dataframe is used to index the values dataframe constructed from the data argument. The resulting indexed values dataframe is used as the final values dataframe. It requires the index of the values dataframe being uinque and the labels of the index dataframe's index exist in the index of the values dataframe. 
+        - None : the default behavior depends on the type of the ``data`` argument. If ``data`` is a ``pandas.DataFrame`` or a ``pandas.Series`` object, the mode will be ``'align```. Otherwise, it will be ``'override'``.
         
         By default, the constructor prioritizes the align mode if possible.
     columns_init : Literal['override'] | Literal['align']
         The option determins how to align the index of the columns dataframe to the columns of the values dataframe. 
         
-        - 'override': the index of the columns dataframe overrides the columns of the values dataframe. This mode requires both indices' lengths to be the same. 
-        - 'align': the index of the columns dataframe is used to index the columns of the values dataframe constructed from the data argument. This mode is only effective if the ``data`` argument implies a columns index and the ``columns`` argument is not ``None``. The resulting indexed values dataframe is used as the final values dataframe. It requires the columns of the values dataframe being uinque and the labels of the columns dataframe's index exist in the columns of the values dataframe. 
+        - 'override' : the index of the columns dataframe overrides the columns of the values dataframe. This mode requires both indices' lengths to be the same. 
+        - 'align' : the index of the columns dataframe is used to index the columns of the values dataframe constructed from the data argument. The resulting indexed values dataframe is used as the final values dataframe. It requires the columns of the values dataframe being uinque and the labels of the columns dataframe's index exist in the columns of the values dataframe. 
+        - None : the default behavior depends on the type of the ``data`` argument. If ``data`` is a ``pandas.DataFrame``, a dict of list-like objects or a list of dict objects, the mode will be ``'align```. Otherwise, it will be ``'override'``.
         
         By default, the constructor prioritizes the align mode if possible.
     both_init : Literal['override'] | Literal['align']
@@ -92,7 +96,9 @@ class MulDataFrame:
             columns_copy = both_copy
 
         if isinstance(data,pd.DataFrame) or \
-            isinstance(data,dict):
+            isinstance(data,dict) or \
+            (isinstance(data,list) and \
+            isinstance(data[0],dict)):
             columns_init = 'align' if columns_init is None else columns_init
         else:
             columns_init = 'override' if columns_init is None else columns_init
@@ -925,23 +931,62 @@ class MulDataFrame:
                         index_copy=False,columns_copy=False)
             
         elif isinstance(new_df,pd.Series):
-            if new_df.shape[0] == self.shape[0] and (
-                new_df.shape[0] != self.shape[1] or 
-                ('axis' in kwargs and kwargs['axis'] == 1) ):
-                new_idx = cmm.align_index_in_call(new_df.index,self,'index')
+            new_idx, new_col = self.__match_index(new_df)
+            axis = self.__match_axis(func,kwargs)
+            if new_idx is not None and (
+                new_col is None or axis == 1 ):
                 return md.MulSeries(new_df.values,index=new_idx,name=func_name,
                                     index_copy=False)
-            elif new_df.shape[0] == self.shape[1] and  (
-                 new_df.shape[0] != self.shape[0] or 
-                ('axis' in kwargs and kwargs['axis'] == 0) ):
-                new_idx = cmm.align_index_in_call(new_df.index,self,'columns')
-                return md.MulSeries(new_df.values,index=new_idx,name=func_name,
+            elif new_col is not None and  (
+                 new_idx is None or axis == 0 ):
+                return md.MulSeries(new_df.values,index=new_col,name=func_name,
                                     index_copy=False)
             else:
-                raise NotImplementedError
+                if new_idx is not None and new_col is not None:
+                    raise NotImplementedError("The primary index and columns are the same. Cannot determine to which dimension the resulting series' index should match. Consider to modify the primary index or the column to make them different or add an axis parameter to the function.")
+                raise ValueError('The first argument is not a proper function (see: https://...).')
+
         else:
             return new_df
+
+    def __match_index(self,ss:pd.Series):
+        try:
+            new_idx = cmm.align_index_in_call(ss.index,self,'index')
+        except:
+            new_idx = None
         
+        try:
+            new_col = cmm.align_index_in_call(ss.index,self,'columns')
+        except:
+            new_col = None
+        return new_idx, new_col
+    
+
+    def __match_axis(self,func, kwargs):
+        if isinstance(func,str):
+            func = getattr(self.__df,func)
+        if 'axis' in kwargs:
+            if kwargs['axis'] == 0:
+                return 0
+            elif kwargs['axis'] == 1:
+                return 1
+            else:
+                raise ValueError('Axis must be 0 or 1.')
+        else:
+            params = inspect.signature(func).parameters
+            if 'axis' in params:
+                axis = params['axis'].default
+                if axis == 0:
+                    return 0
+                elif axis == 1:
+                    return 1
+                else:
+                    raise ValueError('Axis must be 0 or 1.')
+            else:
+                return None
+        
+
+            
 
     def groupby(self,by=None,axis=0,agg_mode:cmm.IndexAgg='same_only',
                 keep_primary=False,sort=True):
@@ -1132,7 +1177,7 @@ class MulDataFrame:
 
         In the "records" table, each value in the values dataframe occupies a row in which its corresponding metadata in the index and columns dataframes are also filled. The "records" table is a ``pandas.DataFrame``.
 
-        Check ???md.pivot_table for a reverse operation.
+        Check :doc:`md.pivot_table <../utility/pivot_table>` for a reverse operation.
 
         Parameters
         -----------

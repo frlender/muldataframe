@@ -688,7 +688,7 @@ class MulSeries:
             if cmm.is_pandas_method(self,func):
                 res = getattr(self.__ss,func)(*args,**kwargs)
             else:
-                raise ValueError(f'If func is a string, it must be a valid method name pandas.Series')
+                raise ValueError(f'If func is a string, it must be a valid method name of pandas.Series')
         else:
             res = func(self.__ss,*args,**kwargs)
         errMsg = f'Currently, {self.__class__} only supports operators or functions that return a scalar value or a pandas series with the same primary index (order can be different if there are no duplicate values) in its .call() method.'

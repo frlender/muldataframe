@@ -13,7 +13,7 @@ If you answered yes to any of these questions, then MulDataFrame is right for yo
 pip install muldataframe
 ```
 
-
+### [Documentation]()
 ### Introduction
 
 A MulDataFrame object consists of three pandas dataframes: an index dataframe, a columns dataframe and a values dataframe. They are accessed through the `.index`, `.columns` and `.df` attributes of the muldataframe. The index of the index dataframe and the index of the columns dataframe are guaranteed to be the same as the index and the columns of the values dataframe. I'll call them the primary index and the primary columns.
@@ -52,10 +52,18 @@ Index(['a', 'b', 'b'], dtype='object')
    x  y      c  d
 b  3  6   b  8  9
 b  5  6   b  8  7
-
+>>> mf.loc[mf['d']<9]
+(2, 2)    g  7  6
+          f  5  3
+             c  d
+--------  ---------
+   x  y      c  d
+a  1  2   a  1  2
+b  5  6   b  8  7
 ```
-MulDataFrame uses `.mloc` to perform multi-indexing. Its input can be a list or a dict. If a list is used, it is similar to the multi-indexing in pandas except that you don't need to create a `pd.IndexSlicer`. Just use a plain list with `...` as placeholders.
+MulDataFrame uses `.mloc` to perform multi-indexing. Its input can be a list or a dict. If a list is used, it is similar to the multi-indexing in pandas except that you don't need to create a `pd.IndexSlicer` object. Just input a plain list with `...` as placeholders. The example below returns a MulSeries object whose name is a pandas Series and index a pandas DataFrame.
 ```python
+# the result is a MulSeries object
 >>> mf.mloc[[..., 6],[3]]
 (2,)     g  6
          f  3
@@ -68,20 +76,18 @@ b  5  6  b  7
 When dictionaries are used as indexers, you can change the order of [hierarchical indexing](https://pandas.pydata.org/docs/user_guide/advanced.html):
 
 ```python
-# the result is a MulSeries object
->>> mf.mloc[{'y':[2,6],'x':3}]
-(2,)     y  6
-         x  3
-            b
--------  ------
-   f  g     b
-c  5  7  c  8
-d  3  6  d  9
+>>> mf.mloc[{'y':[2,6],'x':[3]}]
+(1, 2)    g  7  6
+          f  5  3
+             c  d
+--------  ---------
+   x  y      c  d
+b  3  6   b  8  9
 ```
-In the above example, the muldataframe is first indexed using the `y` column of the index dataframe and then the `x` column. Using a list  as input cannot achieve this. In fact, `mf.mloc[[3,6]]` will report error.
+In the above example, the muldataframe is first indexed by the `y` column of the index dataframe and then the `x` column. With a list  as input you cannot achieve this. In fact, `mf.mloc[[[3],[2,6]]]` reports error. (On the other hand, `mf.mloc[[3,[2,6]]]` returns the second row as a mulseries. You can read more about this behavior which is different from pandas at ???)
 
 
-`mf.mindex` and `mf.mcolumns`/`mf.mcols` are implemented as alias for `mf.index` and `mf.columns` to help distinguish between a multi-index and a regular index. `mf.pindex` and `mf.pcolumns`/`md.pcols` are implemented as alias for `mf.primary_index` and `mf.primary_columns` to shorten name length. We'll use these alias in the following examples.
+`mf.mindex` and `mf.mcolumns`/`mf.mcols` are implemented as alias for `mf.index` and `mf.columns` to help distinguish between a multi-index and a regular index. `mf.pindex` and `mf.pcolumns`/`md.pcols` are implemented as shorthands for `mf.primary_index` and `mf.primary_columns`. We'll use these alias in the following examples.
 
 ```python
 >>> mf.pcols
@@ -93,11 +99,12 @@ b  3  6
 b  5  6
 ```
 
-Because of the locking of the primary index and columns, if you change the index of the index dataframe, the index of the values dataframe will also change. The same applies to the columns dataframe.
+Because of the locking of the primary index and columns, if you change the index of the index dataframe, the index of the values dataframe will also change. The same applies to the index of the columns dataframe.
+
 ```python
 >>> mf2 = mf.copy()
 # mf2.pindex = ['d','e',5] also works
->>> mf2.index.index = ['d','e',5]
+>>> mf2.mindex.index = ['d','e',5]
 >>> mf2.df
 	c	d
 d	1	2
@@ -105,4 +112,35 @@ e	8	9
 5	8	7
 ```
 
-You can easily change the primary index to another column in the index dataframe by calling the `set_index()` method of the index dataframe like `md.index.set_index(col_name, inplace=True)`, where `md` is a muldataframe. 
+You can also easily change the primary index to another column in the index dataframe by calling the `.set_index()` method of the index dataframe.
+
+```python
+>>> mf2.mindex.set_index('x',inplace=True)
+>>> mf2
+(3, 2)    g  7  6
+          f  5  3
+             c  d
+--------  ---------
+   y         c  d
+x         x
+1  2      1  1  2
+3  6      3  8  9
+5  6      5  8  7
+```
+With the ``MulDataFrame.query`` method, you can query the three dataframes alone or in combinations:
+```python
+>>> mf.query('d < 9',index='y==6')
+(1, 2)    g  7  6
+          f  5  3
+             c  d
+--------  ---------
+   x  y      c  d
+b  5  6   b  8  7
+>>> mf.query('d < 9',index='y==6',columns='f==5')
+(1, 1)    g  7
+          f  5
+             c
+--------  ------
+   x  y      c
+b  5  6   b  8
+```

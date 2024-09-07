@@ -105,7 +105,9 @@ def pivot_table(*args,**kwargs):
     '''
     Same as ``pandas.pivot_table`` except that it returns a MulDataFrame.
 
-    If with the same arguments, ``pandas.pivot_table`` returns a dataframe with no multiindex. Then this function will return a muldataframe with empty index and columns dataframes with ther index attributes being set as the primary index and columns. 
+    If with the same arguments, ``pandas.pivot_table`` returns a dataframe with no multiindex. Then this function will return a muldataframe with empty index and columns dataframes. 
+    
+    Check :doc:`MulDataFrame.melt <../muldataframe/melt>` for a reverse operation.
 
     Parameters
     -----------
@@ -129,7 +131,7 @@ def pivot_table(*args,**kwargs):
                          "large"],
                    "D": [1, 2, 2, 3, 3, 4, 5, 6, 7],
                    "E": [2, 4, 5, 5, 6, 6, 8, 9, 9]})
-    >>> pivot_table(df, values='D', index=['A', 'B'], columns=['C'], aggfunc="sum")
+    >>> md.pivot_table(df, values='D', index=['A', 'B'], columns=['C'], aggfunc="sum")
     (4, 2)       Empty DataFrame
                  Columns: []
                  Index: [large, small]

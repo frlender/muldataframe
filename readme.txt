@@ -7,6 +7,6 @@ advantages:
 6. With primary index, operations like add and div between MulDataFrames can be aligned like pandas.DataFrame. (TODO: compare to operations between pandas.DataFrame with multi-index???)
 7. ... syntax
 8. mloc dict syntax allows the change of the order of flexible hierachical indexing
-
+9. Primary index enables boolean index: mf.loc[mf.mindex['col']>2]
 
 An alternative multi-index DataFrame for Python and Pandas
