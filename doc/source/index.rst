@@ -6,10 +6,10 @@
 MulDataFrame documentation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-"A multi-index is just a DataFrame, period."
+   "A multi-index is just a DataFrame, period."
 
-.. image:: https://github.com/frlender/muldataframe/raw/main/figure.png
-  :width: 400
+.. image:: _static/figure.png
+  :width: 700
   :alt: Alternative text
 
 
@@ -52,7 +52,17 @@ a  1  2
 b  8  9
 b  8  7
 
-MulDataFrame uses ``.mloc`` to perform multi-indexing. Its indexer can be a list or a dict. If a list is used, write ``...`` as placeholders to select all rows in an index dataframe. The example below returns a MulSeries object whose name is a pandas Series and index a pandas DataFrame.
+The index of the index dataframe and the index of the columns dataframe are guaranteed to be the same as the index and the columns of the values dataframe. They are called the primary index and the primary columns.
+
+>>> mf2 = mf.copy()
+>>> mf2.index.index = ['d','e',5]
+>>> mf2.df
+   c  d
+d  1  2
+e  8  9
+5  8  7
+
+MulDataFrame uses ``.mloc`` to perform multi-indexing. Its indexer can be a list or a dict. If a list is used, write ``...`` as placeholders to select all values in a column of an index dataframe. The example below returns a MulSeries object whose name is a pandas Series and index a pandas DataFrame.
 
 >>> mf.mloc[[..., 6],[3]]
 (2,)     g  6
@@ -90,15 +100,7 @@ b  5  6   b  8  7
    x  y      c
 b  5  6   b  8
 
-The index of the index dataframe and the index of the columns dataframe are guaranteed to be the same as the index and the columns of the values dataframe. They are called the primary index and the primary columns.
 
->>> mf2 = mf.copy()
->>> mf2.index.index = ['d','e',5]
->>> mf2.df
-   c  d
-d  1  2
-e  8  9
-5  8  7
 
 
 .. toctree::

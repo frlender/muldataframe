@@ -2,11 +2,17 @@ import pandas as pd
 import muldataframe.cmm as cmm
 import muldataframe as md
 # import muldataframe.cmm as cmm
-
+# import typing
 
 def aggregate_index(i:int,index:pd.DataFrame,index_agg:cmm.IndexAgg) -> pd.DataFrame:
     # agg_mode: 'same_only', 'array'
     # print(key)
+    
+    # if isinstance(key,tuple) or \
+    #     not isinstance(key,typing.Hashable):
+    #     final_index = pd.Index([i])
+    # else:
+    #     final_index = pd.Index([key])
     final_index = pd.Index([i])
     if index_agg == 'same_only':
         # print(index[index.columns[0]].unique())

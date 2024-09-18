@@ -363,7 +363,7 @@ def test_insert():
     assert eq(ms2.mindex.iloc[-1].values,[None]*2)
 
     ms2 = ms.insert('e',7,1,[8,9],False)
-    print('\n',ms2)
+    # print('\n',ms2)
     assert eq(ms2.pindex.tolist(),['a','e','b','b'])
     assert eq(ms2.values, [1,7,8,9])
     assert eq(ms2.mindex.iloc[1].values,[8,9])
@@ -492,18 +492,19 @@ def test_groupby():
     ms2.index.set_index('x',inplace=True)
     res = ms2.groupby('y').mean()
     assert eq(res.values,[1.5,3])
-    assert eq(res.index.index.values,[0,1])
-    assert eq(res.index.columns.values,['y'])
+    assert eq(res.index.index.values,['b','g'])
+    assert eq(res.index.columns.values,[])
 
     res = ms2.groupby('y',agg_mode='list').mean()
-    assert eq(res.index.columns.values,['y','z'])
+    assert eq(res.index.columns.values,['z'])
     assert eq(res.index['z'].values[0],['c','f'])
 
-
+    # print('++++++++++++++++++')
+    # print('\n',ms2)
     res = ms2.groupby('y',keep_primary=True,
                       agg_mode='list').mean()
-    assert eq(res.index.index.values,[0,1])
-    assert eq(res.index.columns.values,['x','y','z'])
+    assert eq(res.index.index.values,['b','g'])
+    assert eq(res.index.columns.values,['x','z'])
     assert eq(res.index['z'].values[0],['c','f'])
     assert eq(res.index['x'].values[0],['a','g'])
 

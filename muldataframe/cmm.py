@@ -6,7 +6,7 @@ from typing import Literal, TypeVar, Generic
 import muldataframe as md
 # import muldataframe.util as util
 import numpy as np
-
+import inspect
 # MulSeries = MulSeriesModule.MulSeries
 
 IndexType = Literal['index'] | Literal['columns']
@@ -197,15 +197,19 @@ def is_numpy_function(name):
     return hasattr(np,name) and hasattr(getattr(np,name),'__call__')
 
 
-def groupby(self,indexType:IndexType|MIndexType,by=None,keep_primary=False,
-            agg_mode:IndexAgg='same_only',**kwargs):
+def groupby(self,indexType:IndexType|MIndexType,by=None,
+            keep_primary=False,
+            agg_mode:IndexAgg='same_only',
+            **kwargs):
         index_agg = agg_mode
         if isinstance(self,md.MulSeries):
             M = md.MulSeries
         else:
             M = md.MulDataFrame
         if by is None or (isinstance(by,list) and None in by) or keep_primary:
-            ms = self.loc[:]
+            # # .loc[:] does not return a copy!!!
+            # ms = self.loc[:]
+            ms = self.copy(data_copy=False)
             if getattr(self,indexType).index.name is None:
                 getattr(ms,indexType).index.name = \
                     get_index_name('index',getattr(self,indexType).columns)
@@ -219,7 +223,7 @@ def groupby(self,indexType:IndexType|MIndexType,by=None,keep_primary=False,
             groupBy = getattr(ms,indexType).groupby(by,**kwargs)
             return MulGroupBy[M](ms,indexType,by,groupBy,index_agg)
         else:
-            groupBy = getattr(self,indexType).groupby(by)
+            groupBy = getattr(self,indexType).groupby(by,**kwargs)
             return MulGroupBy[M](self,indexType,by,groupBy,index_agg)
 
 # G = TypeVar('G')
@@ -266,11 +270,18 @@ class MulGroupBy(Generic[M]):
 
     def __getattr__(self,name):
         if hasattr(np,name) and hasattr(getattr(np,name),'__call__'):
+            np_func = getattr(np,name)
+            params = inspect.signature(np_func).parameters
             def func(*args,**kwargs):
-                return self.call(getattr(np,name),*args,**kwargs)
+                if 'axis' in params and 'axis' not in kwargs:
+                    kwargs['axis'] = 0 if self.indexType == 'index' else 1
+                return self.call(np_func,*args,**kwargs)
             return func
         
-    def call(self,func,*args,**kwargs):
+    def call(self,func,*args,
+             use_mul=False,
+             set_primary=True,
+             **kwargs):
         '''
         Call a function on the MulGroupBy object.
 
@@ -281,7 +292,9 @@ class MulGroupBy(Generic[M]):
         func: function
             A function applied to the MulSeries or MulDataFrame in each group.
         use_mul: bool, default False
-            An optional argument to determine how :code:`func` is applied. If False, :code:`MulSeries.call(func)` or :code:`MulDataFrame.call(func)` is used to compute the results in each group. The object passed to :code:`func` will be the MulSeries or the MulDataframe's values Series or DataFrame in each group. If True, :code:`func(MulSeries)` or :code:`func(MulDataFrame)` are used to compute the results.
+            An optional argument to determine how :code:`func` is applied. If False, :code:`MulSeries.call(func)` or :code:`MulDataFrame.call(func)` is used to compute the results for each group. The object passed to :code:`func` will be the MulSeries or the MulDataframe's values Series or DataFrame in each group. If True, :code:`func(MulSeries)` or :code:`func(MulDataFrame)` are used to compute the results.
+        set_primary : bool, default True
+            This parameter will only work if ``self.by`` is ``None`` or is a column label that selects a column in the parent's index or columns dataframe. It sets the values in the ``by`` column as the primary index or columns of the return value.
         
         Returns
         --------
@@ -291,22 +304,22 @@ class MulGroupBy(Generic[M]):
         # print('******',G,M,type(G),)
         M_class = self.__orig_class__.__args__[0]
         res = None
-        use_mul = False
         arr = []
-        if 'use_mul' in kwargs:
-            use_mul = kwargs['use_mul']
-            del kwargs['use_mul']
-        for i,(k,gp) in enumerate(self):
+        for i,(key,gp) in enumerate(self):
+            # print(key,gp)
             if use_mul:
                 val = func(gp,*args,**kwargs)
             else:
                 val = gp.call(func,*args,**kwargs)
-            if isinstance(val,M_class): # MulSeries
+            # print('\n',gp,'\n',val)
+            if isinstance(val,M_class):
                arr.append(val)
                 # return NotImplemented
             else:
-                index = gp.index
+                index = gp.index if self.indexType == 'index' else gp.columns
+                # print(index)
                 index = md.aggregate_index(i,index,self.index_agg)
+                # print('\n',index)
                 if not isinstance(val,md.MulDataFrame) and \
                     not isinstance(val,md.MulSeries):
                     if isinstance(self.parent,md.MulSeries):
@@ -318,21 +331,38 @@ class MulGroupBy(Generic[M]):
                 elif isinstance(self.parent,md.MulDataFrame) and \
                     isinstance(val,md.MulSeries):
                     if self.indexType == 'index':
-                         ms = md.MulDataFrame([val.values],
-                            index=index,
-                            columns=val.index,both_copy=False)
+                        if kwargs['axis'] == 0:
+                            ms = md.MulDataFrame([val.values],
+                                index=index,
+                                columns=val.index,both_copy=False)
+                        else:
+                            ms = md.MulDataFrame([[x] for x in val.values],
+                                index=val.index,
+                                columns=pd.DataFrame(val.name).transpose(),both_copy=False)
                         #  print(val,ms)
                     else:
-                        ms = md.MulDataFrame([[x] for x in val.values],
-                            index=val.index,
-                            columns=index,both_copy=False)
+                        if kwargs['axis'] == 1:
+                            ms = md.MulDataFrame([[x] for x in val.values],
+                                index=val.index,
+                                columns=index,both_copy=False)
+                        else:
+                            ms = md.MulDataFrame([val.values],
+                                index=pd.DataFrame(val.name).transpose(),
+                                columns=val.index,both_copy=False)
+                        # print(val,'kkkkk\n',ms)
                 else:
                     raise NotImplementedError('The function applied to a group MulDataFrame can only produce a A MulDataFrame, a MulSeries or a scalar. The function applied to a group MulSeries can only produce a MulSeries or a scalar.')
-
-
                 arr.append(ms)
-        axis = 0 if self.indexType == 'index' else 1
+
+        axis = 0 if self.indexType == 'index' or \
+             isinstance(arr[0],md.MulSeries) else 1
+        # print('res','\n',arr[0],'\n',arr[1])
         res = md.concat(arr,axis=axis)
+        if isinstance(self.by,str) and set_primary:
+            if self.indexType == 'index':
+                res.index.set_index(self.by,inplace=True)
+            else:
+                res.columns.set_index(self.by,inplace=True)
         return res
 
 def fmtSeries(ss:pd.Series):

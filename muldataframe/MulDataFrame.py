@@ -9,11 +9,11 @@ tabulate.PRESERVE_WHITESPACE = True
 import inspect
 # import muldataframe.util as util
 
+#TODO add groupby primary index test
+#TODO doc for groupby numpy functions
 #TODO add more test to call method
 #TODO itercols
 #TODO iloc, loc accept boolean series as input?
-#TODO insert doc
-#TODO Drop doc
 #TODO print display improve. 1) align columns dataframe and values dataframes. 2) in case index and columns have names like the example in pivot_table doc.
 
 class MulDataFrame:
@@ -54,6 +54,8 @@ class MulDataFrame:
         whether to create a copy of the columns argument.
     both_copy : bool
         It overrides index_copy and columns_copy with the same value.
+    data_copy : bool, default None
+        Wether to copy ``data``. It behaves the same as the ``copy`` argument in `pandas.DataFrame.__init__ <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`_
 
     Examples
     ----------
@@ -67,8 +69,8 @@ class MulDataFrame:
     >>> columns = pd.DataFrame([[5,7],[3,6]],
                         index=['c','d'],
                         columns=['f','g'])
-    >>> md = MulDataFrame([[1,2],[8,9],[8,10]],index=index,columns=columns)
-    >>> md
+    >>> mf = MulDataFrame([[1,2],[8,9],[8,10]],index=index,columns=columns)
+    >>> mf
     (3, 2)    g  7   6
               f  5   3
                  c   d
@@ -85,7 +87,8 @@ class MulDataFrame:
         both_init:cmm.IndexInit=None,
         index_copy=True,
         columns_copy=True,
-        both_copy=None):
+        both_copy=None,
+        data_copy=None):
 
         if both_init is not None:
             index_init = both_init
@@ -110,9 +113,12 @@ class MulDataFrame:
             index_init = 'override' if index_init is None else index_init
 
         if not isinstance(data,pd.DataFrame):
-            df = pd.DataFrame(data)
+            df = pd.DataFrame(data,copy=data_copy)
         else:
-            df = data
+            if data_copy:
+                df = data.copy()
+            else:
+                df = data
         
         # print('-----',df,index,index_init)
         df, index = cmm.setMulIndex(df,'index',index,index_init,index_copy)
@@ -351,13 +357,30 @@ class MulDataFrame:
                 self.index.equals(other.index) and \
                 self.columns.equals(other.columns)
 
-    def copy(self):
+    def copy(self,data_copy=False):
         '''
-        Create a deep copy of the MulDataFrame.
+        Create a deep copy of MulDataFrame.
+
+        Parameters
+        ------------
+        data_copy : bool, default True
+            Whether to create a deep copy of the ``.values`` attribute.
+        
+        Returns
+        ------------
+        MulDataFrame
+            A copied muldataframe.
         '''
-        return MulDataFrame(self.__df.copy().values,
+        if data_copy:
+            return MulDataFrame(self.__df.copy().values,
                              index=self.index,
                              columns=self.columns)
+        else:
+            return MulDataFrame(self.values,
+                             index=self.index,
+                             columns=self.columns,
+                             both_copy=True,
+                             data_copy=False)
     
 
     def transpose(self,inplace=False):
@@ -910,6 +933,7 @@ class MulDataFrame:
             return NotImplemented
 
         self.__df._update_super_index()
+        # print(func,type(func))
         if isinstance(func,str):
             func_name = func
             if cmm.is_pandas_method(self,func):
@@ -932,13 +956,12 @@ class MulDataFrame:
             
         elif isinstance(new_df,pd.Series):
             new_idx, new_col = self.__match_index(new_df)
-            axis = self.__match_axis(func,kwargs)
             if new_idx is not None and (
-                new_col is None or axis == 1 ):
+                new_col is None or self.__match_axis(func,kwargs) == 1 ):
                 return md.MulSeries(new_df.values,index=new_idx,name=func_name,
                                     index_copy=False)
             elif new_col is not None and  (
-                 new_idx is None or axis == 0 ):
+                 new_idx is None or self.__match_axis(func,kwargs) == 0 ):
                 return md.MulSeries(new_df.values,index=new_col,name=func_name,
                                     index_copy=False)
             else:
@@ -966,9 +989,9 @@ class MulDataFrame:
         if isinstance(func,str):
             func = getattr(self.__df,func)
         if 'axis' in kwargs:
-            if kwargs['axis'] == 0:
+            if kwargs['axis'] == 0 or kwargs['axis'] == 'index':
                 return 0
-            elif kwargs['axis'] == 1:
+            elif kwargs['axis'] == 1 or kwargs['axis'] == 'columns':
                 return 1
             else:
                 raise ValueError('Axis must be 0 or 1.')
@@ -976,9 +999,10 @@ class MulDataFrame:
             params = inspect.signature(func).parameters
             if 'axis' in params:
                 axis = params['axis'].default
-                if axis == 0:
+                print(axis)
+                if axis == 0 or axis == 'index':
                     return 0
-                elif axis == 1:
+                elif axis == 1 or axis == 'columns':
                     return 1
                 else:
                     raise ValueError('Axis must be 0 or 1.')
@@ -988,8 +1012,10 @@ class MulDataFrame:
 
             
 
-    def groupby(self,by=None,axis=0,agg_mode:cmm.IndexAgg='same_only',
-                keep_primary=False,sort=True):
+    def groupby(self,by=None,axis=0,
+                agg_mode:cmm.IndexAgg='same_only', 
+                keep_primary=False,
+                **kwargs):
         '''
         Group MulDataFrame by its index or columns dataframe using a mapper or the index/columns dataframe's columns.
 
@@ -1001,14 +1027,13 @@ class MulDataFrame:
             Please refers to `DataFrame.groupby <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.groupby.html#pandas.DataFrame.groupby>`_ for detailed information on this argument. Its difference to the :code:`by` argument in ``DataFrame.groupby`` is that if it is None, uses the primary index (if ``axis==0``) or the primary columns (if ``axis==1``) to group the MulDataFrame.
         axis : 0 or 1, default 0
             Whether to group the MulDataFrame by its index dataframe (if ``axis==0``) or by its columns dataframe (if ``axis==1``).
-        keep_primary : bool, default False
-            Whether to keep primary index or columns in the index or columns dataframe in each group. If ``True``, the primary index or columns will be reset as a column and kept in the index or columns dataframe in each group.
         agg_mode : 'same_only', 'list','tuple', default to 'same only'
             Determine how to aggregate column values in the index or columns dataframe that are not the same in each group when calling numpy functions on or using the :doc:`call <../groupby/indices>` method of the MulGroupBy object.
-            
             - ``'same_only'``: only keep columns that have the same values within each group. 
             - ``'list'``: put columns that do not have the same values within a group into a list. 
             - ``'tuple'``: similar to 'list', but put them into a tuple.
+        keep_primary : bool, default False
+            Whether to keep primary index or columns in the index (``axis=0``) or columns (``axis=1``) dataframe in each group. If ``True``, the primary index or columns will be reset as a column and kept in the index or columns dataframe in each group. If the name of the primary index or columns is ``None``, ``"primary_index"`` will be used as its name.
 
         Returns
         -----------
@@ -1018,15 +1043,15 @@ class MulDataFrame:
 
         Examples
         ------------
-        >>> import muldataframe as md
-        >>> import pandas as pd
-        >>> index = pd.DataFrame([[1,2],[3,6],[5,6]],
-                     index=['a','b','b'],
-                     columns=['x','y'])
-        >>> columns = pd.DataFrame([[5,7],[3,6]],
-                        index=['c','d'],
-                        columns=['f','g'])
-        >>> mf = MulDataFrame([[1,2],[8,9],[8,10]],index=index, columns=columns)
+        >>> mf
+        (3, 2)    g  7   6
+                  f  5   3
+                     c   d
+        --------  ---------
+           x  y      c   d
+        a  1  2   a  1   2
+        b  3  6   b  8   9
+        b  5  6   b  8  10
         >>> for key, group in mf.groupby('y'):
         ...     if key == 6:
         ...         print(key,'\\n',group)
@@ -1038,27 +1063,30 @@ class MulDataFrame:
            x  y      c   d
         b  3  6   b  8   9
         b  5  6   b  8  10
-        >>> mf.groupby('y').mean(axis=0)
-        (2, 2)   g    7    6
-                 f    5    3
-                      c    d
-        -------  -----------
-           y          c    d
-        0  2     0  1.0  2.0
-        1  6     1  8.0  9.5
-        >>> ms.groupby('y',agg_mode='list').sum()
-        (2,)                  f   b
-                              e   a
-                                 cc
-        --------------------  ------
-                x  y       z     cc
-        0  [a, g]  b  [c, f]  0   3
-        1       b  g       h  1   3
+        >>> mf.groupby('y').mean()
+        (2, 2)           g    7    6
+                         f    5    3
+                              c    d
+        ---------------  -----------
+        Empty DataFrame       c    d
+        Columns: []      y
+        Index: [2, 6]    2  1.0  2.0
+                         6  8.0  9.5
+        >>> mf.groupby('y',agg_mode='list',keep_primary=True).mean()
+        (2, 2)                   g    7    6
+                                 f    5    3
+                                      c    d
+        -----------------------  -----------
+          primary_index       x       c    d
+        y                        y
+        2             a       1  2  1.0  2.0
+        6             b  [3, 5]  6  8.0  9.5
         '''
         indexType = 'index' if axis == 0 else 'columns'
         return cmm.groupby(self,indexType,by=by,
-                           keep_primary=keep_primary,agg_mode=agg_mode,
-                           sort=sort)
+                           keep_primary=keep_primary,
+                           agg_mode=agg_mode,
+                           **kwargs)
     
 
     def __query_index(self,df,expr,**kwargs):

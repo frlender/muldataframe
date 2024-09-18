@@ -49,3 +49,18 @@ b  3  6   b  8
 b  3  6   b  8
 b  5  6   b  8
 
+The same indexers can also be used to set values:
+
+>>> mf2 = mf.copy()
+>>> mf2.loc['a'] = [5,7]
+>>> mf2.values
+array([[5, 7],
+       [8, 9],
+       [8, 7]])
+>>> mf2['c'] = [8,9,10]
+>>> mf2.values
+rray([[ 8,  7],
+      [ 9,  9],
+      [10,  7]])
+
+      

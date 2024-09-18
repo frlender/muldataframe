@@ -39,7 +39,7 @@ ValueError
 
 It is better to use ``mf.ds.value_counts('c')`` in this case.
 
-Of note, pandas methods added to MulSeries or MulDataFrame using the call method **are not listed in the API**. Users could read the pandas API documentation to learn their usage and determine whether they are proper functions. All the methods listed in the MulDataFrame API are rewritten for MulSeries or MulDataFrame. 
+Of note, pandas methods added to MulSeries or MulDataFrame using the call method **are not listed in the API**. Users could read the pandas API documentation to learn their usage and determine whether they are proper functions. All the methods listed in the MulDataFrame API are rewrittened ones not borrowed from pandas. 
 
 
 

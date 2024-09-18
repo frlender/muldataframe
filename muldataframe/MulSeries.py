@@ -31,6 +31,8 @@ class MulSeries:
         whether to create a copy of the index argument.
     name_copy: bool
         whether to create a copy of the name argument.
+    data_copy : bool, default None
+        Wether to copy ``data``. It behaves the same as the ``copy`` argument in `pandas.Series.__init__ <https://pandas.pydata.org/docs/reference/api/pandas.Series.html>`_
 
     Examples:
     ----------
@@ -59,18 +61,21 @@ class MulSeries:
     def __init__(self,data,index:pd.DataFrame=None,
                  name:pd.Series|str|None=None,
                  index_init:cmm.IndexInit=None,
-                 index_copy=True,name_copy=True):
+                 index_copy=True,name_copy=True,
+                 data_copy=None):
        
         ss = data
         
         if isinstance(ss,dict):
-            ss = pd.Series(ss)
+            ss = pd.Series(ss,copy=data_copy)
 
         if isinstance(ss,pd.Series):
             index_init = 'align' if index_init is None else index_init
+            if data_copy:
+                ss = ss.copy()
         else:
             index_init = 'override' if index_init is None else index_init
-            ss = pd.Series(ss)
+            ss = pd.Series(ss,copy=data_copy)
 
         if not isinstance(name,pd.Series):
             if isinstance(name,str):
@@ -417,13 +422,31 @@ class MulSeries:
         else:
             return self.ds.equals(other.ds) and self.index.equals(other.index) and self.name.equals(other.name)
 
-    def copy(self):
+    def copy(self,data_copy=True):
         '''
-        Create a deep copy of the mulseries.
+        Create a deep copy of MulSeries.
+
+        Parameters
+        ------------
+        data_copy : bool, default True
+            Whether to create a deep copy of the ``.values`` attribute.
+        
+        Returns
+        ------------
+        MulSeries
+            A copied mulseries.
         '''
-        return MulSeries(self.__ss.copy().values,
+        if data_copy:
+            return MulSeries(self.__ss.copy().values,
                          index=self.index,
                          name=self.name.copy())
+        else:
+            return MulSeries(self.values,
+                         index=self.index,
+                         name=self.name,
+                         index_copy=True,
+                         name_copy=True,
+                         data_copy=False)
     
     def __iter__(self):
         '''
@@ -733,7 +756,7 @@ class MulSeries:
         else:
             return res
 
-    def groupby(self,by=None,keep_primary=False,agg_mode:cmm.IndexAgg='same_only'):
+    def groupby(self,by=None,agg_mode:cmm.IndexAgg='same_only',keep_primary=False):
         '''
         Group MulSeries by its index dataframe using a mapper or the index dataframe's columns.
 
@@ -743,13 +766,16 @@ class MulSeries:
         ------------
         by : None, mapping, function, label, pd.Grouper or list of such
             Please refers to `DataFrame.groupby <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.groupby.html#pandas.DataFrame.groupby>`_ for detailed information on this argument. The difference to the :code:`by` argument in DataFrame.groupby is that if it is None, uses the primary index to group the MulSeries.
-        keep_primary : bool, default False
-            Whether to keep primary index in the index dataframe in each group. If ``True``, the primary index will be reset as a column and kept in the grouped dataframes.
+        
         agg_mode : 'same_only', 'list','tuple', default to 'same_only'
             Determine how to aggregate column values in the index dataframe that are not the same in each group when calling numpy functions on or using the :doc:`call <../groupby/indices>` method of the MulGroupBy object.
+
              - ``'same_only'``: only keep columns that have the same values within each group. 
              - ``'list'``: put columns that do not have the same values within a group into a list. 
              - ``'tuple'``: similar to 'list', but put them into a tuple.
+
+        keep_primary : bool, default False
+            Whether to keep primary index in the index dataframe in each group. If ``True``, the primary index will be reset as a column and kept in the grouped dataframes.  If the name of the primary index or columns is ``None``, ``"primary_index"`` will be used as its name.
 
         Returns
         -----------
@@ -779,21 +805,23 @@ class MulSeries:
         0  a  b  c  0   1
         1  g  b  f  1   2
         >>> ms.groupby('y').sum()
-        (2,)    f   b
-                e   a
-                   cc
-        ------  ------
-           y       cc
-        0  b    0   3
-        1  g    1   3
+        (2,)             f   b
+                         e   a
+                            cc
+        ---------------  ------
+        Empty DataFrame     cc
+        Columns: []      y
+        Index: [b, g]    b   3
+                         g   3
         >>> ms.groupby('y',agg_mode='list').sum()
-        (2,)                  f   b
-                              e   a
-                                 cc
-        --------------------  ------
-                x  y       z     cc
-        0  [a, g]  b  [c, f]  0   3
-        1       b  g       h  1   3
+        (2,)               f   b
+                           e   a
+                              cc
+        -----------------  ------
+                x       z     cc
+        y                  y
+        b  [a, g]  [c, f]  b   3
+        g       b       h  g   3
         '''
         return cmm.groupby(self,'index',by=by,
                            keep_primary=keep_primary,agg_mode=agg_mode)

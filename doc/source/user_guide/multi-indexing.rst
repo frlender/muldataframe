@@ -82,7 +82,29 @@ b  3  6   b  8
 b  3  6  b  8
 b  5  6  b  8
 
+You can also use ``.mloc`` to set values:
 
+>>> mf3 = mf.copy()
+>>> mf3.mloc[{'x':3},{'f':5}] = 7 
+>>> mf3.df
+(3, 2)    g  7  6
+          f  5  3
+             c  d
+--------  ---------
+   x  y      c  d
+a  1  2   a  1  2
+b  3  6   b  0  9
+b  5  6   b  8  7
+>>> mf3.mloc[[..., 2]] = [3,5]
+>>> mf3.df
+(3, 2)    g  7  6
+          f  5  3
+             c  d
+--------  ---------
+   x  y      c  d
+a  1  2   a  3  5
+b  3  6   b  0  9
+b  5  6   b  8  7
 
 
 nloc
@@ -100,6 +122,8 @@ b  3  6  5  b  8  9
 b  5  6  2  b  8  7
 
 Note that with a dict as input to ``.mloc``, you can only select the last "y" column in the index dataframe. Using ``.nloc`` you can select the first "y" column.
+
+``.nloc`` can also be used to set values.
 
 
 Difference to pandas

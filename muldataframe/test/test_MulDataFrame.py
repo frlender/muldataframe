@@ -37,7 +37,7 @@ def test_loc_item():
     assert eq(mf.iloc[1:].values,[[5,5],[5,5]])
 
     
-    print('\n',mf.loc[mf['c']>1,mf.loc['a']>1])
+    # print('\n',mf.loc[mf['c']>1,mf.loc['a']>1])
     mf.loc[mf['c']>1,mf.loc['a']>1] = [[8],[9]]
     # assert eq(mf.values,[[1,2],[5,8],[5,9]])
 
@@ -266,7 +266,7 @@ def test_get_setitem():
         name=pd.Series([8,9],index=['f','g']))
     assert eq(md.loc[:,'e'].values,[6,7,8])
     assert md.shape == (3,3)
-    print('\n',md)
+    # print('\n',md)
     assert eq(md.mcols.loc['e'].values,[8,9])
 
 
@@ -554,31 +554,51 @@ def test_groupby():
     md2 = md.groupby('y').mean(axis=0)
     assert eq(md2.values,[[1,2],[8,9.5]])
     assert md2.mcols.shape == (2,2)
-    assert md2.index.shape == (2,1)
+    assert md2.index.shape == (2,0)
 
     md2 = md.transpose()
     md3 = md2.groupby('y',axis=1).mean(axis=1)
+    assert eq(md3.columns.index.values,[2,6])
     assert eq(md3.values,[[1,8],[2,9.5]])
     assert md3.index.shape == (2,2)
 
     md2 = md.groupby().mean(axis=0)
     assert eq(md2.values,[[1,2],[8,9.5]])
-    assert md2.index.shape == (2,2)
+    assert md2.index.shape == (2,1)
 
     md2 = md.groupby(agg_mode='list').mean(axis=0)
     assert eq(md2.values,[[1,2],[8,9.5]])
-    assert md2.index.shape == (2,3)
-    assert eq(md2.index.iloc[1,1],[3,5])
+    assert md2.index.shape == (2,2)
+    # print('tttttt','\n',md)
+    # print('\n',md2)
+    assert eq(md2.index.iloc[1,0],[3,5])
 
     md2 = md.groupby(['x','y']).mean(axis=0)
     assert eq(md2.values,md.values)
     assert md2.index.shape == (3,2)
     assert eq(md2.index.index.values,[0,1,2])
 
-    md2 = md.groupby(['x','y']).mean()
+    md2 = md.groupby(['x','y']).mean(axis=None)
     assert eq(md2.values,[1.5,8.5,9.0])
     assert md2.shape == (3,)
     assert md2.name.name == 'mean'
+
+    # print('\n',md)
+    mf2 = md.groupby('y').sum(axis=1)
+    # print('\n',mf2)
+    assert mf2.shape == (3,1)
+    # print(mf2.columns.shape)
+    assert mf2.columns.shape == (1,0)
+    assert eq(mf2.columns.index.values, ['sum'])
+    assert eq(mf2.values,[[3],[17],[18]])
+    assert mf2.pindex.name == 'y'
+
+    mf2 = md.groupby('f',axis=1).sum(axis=0)
+    # print('\n',mf2)
+    assert mf2.shape == (1,2)
+    assert eq(mf2.values, [[21,17]])
+    assert eq(mf2.pindex.values, ['sum'])
+    
 
 
 
