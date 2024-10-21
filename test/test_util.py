@@ -1,8 +1,12 @@
-from ..MulDataFrame import MulDataFrame
-from ..MulSeries import MulSeries
-from ..util import pivot_table,concat
+# from ..MulDataFrame import MulDataFrame
+# from ..MulSeries import MulSeries
+# from ..util import pivot_table,concat
 import pandas as pd
 from .lib import eq
+import muldataframe as md
+MulDataFrame = md.MulDataFrame
+MulSeries = md.MulSeries
+from muldataframe.util import pivot_table,concat
 
 
 def test_pivot_table():
@@ -18,7 +22,7 @@ def test_pivot_table():
     
     table = pivot_table(df, values='D', index=['A', 'B'],
             columns=['C'], aggfunc="sum")
-    print('\n',table)
+    # print('\n',table)
     assert table.index.equals(pd.DataFrame(
         [['bar','one'],['bar','two'],
          ['foo','one'],['foo','two']],

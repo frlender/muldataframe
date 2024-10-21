@@ -1,9 +1,12 @@
-from ..MulSeries import MulSeries
-from ..MulDataFrame import MulDataFrame
+# from ..MulSeries import MulSeries
+# from ..MulDataFrame import MulDataFrame
 import pandas as pd
 from .lib import eq
 import pytest
 import numpy as np
+import muldataframe as md
+MulDataFrame = md.MulDataFrame
+MulSeries = md.MulSeries
 
 #TODO: mloc set
 
