@@ -694,3 +694,41 @@ def test_melt():
               ['row_x','y','col_x','g','value'])
 
 
+def test_sort_values():
+    index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                     index=['a','b','b'],
+                     columns=['x','y'])
+    columns = pd.DataFrame([[5,7],[3,6]],
+                        index=['c','d'],
+                        columns=['f','g'])
+    mf = MulDataFrame([[1,9],[8,2],[7,10]],index=index,
+                    columns=columns)
+    
+    mf2 = mf.sort_values('d')
+    assert eq(mf2.pindex, ['b','a','b'])
+    assert eq(mf2.values[:,1],[2,9,10])
+
+    
+    index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                     index=['a','b','c'],
+                     columns=['x','y'])
+    mf.index = index
+    mf2 = mf.sort_values('c')
+    assert eq(mf2.pindex, ['a','c','b'])
+    assert eq(mf2.values[:,0], [1,7,8])
+
+    mf2 = mf.sort_values('b',axis=1)
+    # print('\n',mf2)
+    assert eq(mf2.pcols, ['d','c'])
+    assert eq(mf2.values[1], [2,8])
+
+    mf.pcols = ['d','d']
+    mf2 = mf.sort_values('b',axis=1)
+    # print('\n',mf2)
+    assert eq(mf2.pcols, ['d','d'])
+    assert eq(mf2.values[1], [2,8])
+
+
+
+    # print('\n',mf2)
+    

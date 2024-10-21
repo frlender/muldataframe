@@ -1029,8 +1029,9 @@ class MulDataFrame:
             Whether to group the MulDataFrame by its index dataframe (if ``axis==0``) or by its columns dataframe (if ``axis==1``).
         agg_mode : 'same_only', 'list','tuple', default to 'same only'
             Determine how to aggregate column values in the index or columns dataframe that are not the same in each group when calling numpy functions on or using the :doc:`call <../groupby/indices>` method of the MulGroupBy object.
-            - ``'same_only'``: only keep columns that have the same values within each group. 
-            - ``'list'``: put columns that do not have the same values within a group into a list. 
+
+            - ``'same_only'``: only keep columns that have the identical values in each group. 
+            - ``'list'``: put columns that do not have the identical values in a group into a list. 
             - ``'tuple'``: similar to 'list', but put them into a tuple.
         keep_primary : bool, default False
             Whether to keep primary index or columns in the index (``axis=0``) or columns (``axis=1``) dataframe in each group. If ``True``, the primary index or columns will be reset as a column and kept in the index or columns dataframe in each group. If the name of the primary index or columns is ``None``, ``"primary_index"`` will be used as its name.
@@ -1089,11 +1090,12 @@ class MulDataFrame:
                            **kwargs)
     
 
-    def __query_index(self,df,expr,**kwargs):
-        col = '__@$&idx'
-        df[col] = list(range(df.shape[0]))
-        df2 = df.query(expr,**kwargs)
-        return df2[col].tolist()
+    # def __query_index(self,df,expr,**kwargs):
+    #     # col = '__@$&idx'
+    #     col = object() # unique key
+    #     df[col] = list(range(df.shape[0]))
+    #     df2 = df.query(expr,**kwargs)
+    #     return df2[col].tolist()
 
     def query(self,values=None,index=None,columns=None,
               **kwargs):
@@ -1152,11 +1154,12 @@ class MulDataFrame:
             inplace = False
         kwargs['inplace']=False
         if values is not None:
-            valIdx = self.__query_index(self.df,values,**kwargs)
+            # self.__df._update_super_index()
+            valIdx = cmm._query_index(self.ds,values,**kwargs)
         if index is not None:
-            idxIdx = self.__query_index(self.mindex.copy(),index,**kwargs)
+            idxIdx = cmm._query_index(self.mindex,index,**kwargs)
         if columns is not None:
-            colIdx = self.__query_index(self.mcolumns.copy(),columns,**kwargs)
+            colIdx = cmm._query_index(self.mcolumns,columns,**kwargs)
         
         if values is not None and index is not None:
             rowIdx = []
@@ -1338,7 +1341,7 @@ class MulDataFrame:
             self.__df._update_super_index()
             __df = self.__df
             self.__df = None
-            RAND_KEY = '_&%@x'
+            RAND_KEY = object() # use it like a symbol
             if axis == 0:
                 if mloc is None:
                     self.mindex.drop(labels,inplace=True)
@@ -1361,12 +1364,12 @@ class MulDataFrame:
                 else:
                     __df.columns = self.mcols[mloc]
                     pcols_name = self.pcols.name
-                    self.mcols['_&%@x'] = self.mcols.index
+                    self.mcols[RAND_KEY] = self.mcols.index
                     self.mcols.index = self.mcols[mloc]
                     self.mcols.drop(labels,inplace=True)
-                    self.mcols.index = self.mcols['_&%@x']
+                    self.mcols.index = self.mcols[RAND_KEY]
                     self.pcols.name = pcols_name
-                    self.mcols.drop('_&%@x',inplace=True,axis=1)
+                    self.mcols.drop(RAND_KEY,inplace=True,axis=1)
                     __df.drop(labels,inplace=True,axis=1)
                     __df.columns = self.mcols.index
             self.__df = __df
@@ -1470,6 +1473,29 @@ class MulDataFrame:
             mf.insert(column,value,loc,name,True,axis)
             return mf
 
+    def sort_values(self,*args,**kwargs):
+        # by = args[0]
+        if 'axis' in kwargs:
+            axis = kwargs['axis']
+        else:
+            axis = 0
+        if (axis in [0,'index'] and self.pindex.is_unique) or (axis in [1,'columns'] and self.pcols.is_unique):
+            return self.call('sort_values',*args,**kwargs)
+        else:
+            if axis == 0:
+                pindex = self.pindex
+                self.pindex = range(self.shape[0])
+                res = self.call('sort_values',*args,**kwargs)
+                res.pindex = pindex[res.pindex]
+                self.pindex = pindex
+            else:
+                pcols = self.pcols
+                self.pcols = range(self.shape[1])
+                res = self.call('sort_values',*args,**kwargs)
+                res.pcols = pcols[res.pcols]
+                self.pcols = pcols
+            return res
+        
 
 ops = ['add','sub','mul','div','truediv','floordiv','mod','pow','eq','le','lt','gt','ge','ne']
 for op in ops:

@@ -25,5 +25,4 @@ The class for the object returned by the :doc:`MulSeries.groupby <../mulseries/g
 
    __iter__
    call
-   numpy_functions
 

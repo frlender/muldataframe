@@ -513,6 +513,7 @@ class MulSeries:
             return self.iloc[:]
         else:
             nx = self._mloc2pos(key)
+            # print(nx)
             return self.iloc[nx]
     
     def _mloc_set(self,key,values):
@@ -827,6 +828,60 @@ class MulSeries:
                            keep_primary=keep_primary,agg_mode=agg_mode)
     
     
+    def query(self,index=None, **kwargs):
+        '''
+        Query the index dataframe of a MulSeries and return the the query result as a MulSeries.
+
+        The function uses the ``pandas.DataFrame.query`` method under the hood.
+
+        Parameters
+        -----------
+        index : None or str
+            The query string to evaluate for the index dataframe. Check `DataFrame.query <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.query.html>`_ for detailed specification of this argument.
+        kwargs : any
+            The same ``kwargs`` passed to `DataFrame.query <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.query.html>`_ including the ``inplace=False`` argument.
+
+        Returns
+        ----------
+        MulSeries or None
+            None if ``inplace=True.``
+
+
+        Examples
+        ---------
+        >>> index = pd.DataFrame([['a','b','c'],
+                                  ['g','b','f'],
+                                  ['b','g','h']],
+                        columns=['x','y','z'])
+        >>> name = pd.Series(['a','b'],index=['e','f'],name='cc')
+        >>> ms = MulSeries([1,2,3],index=index,name=name)
+        >>> ms.query('y == "b"')
+        (2,)        f   b
+                    e   a
+                       cc
+        ----------  ------
+           x  y  z     cc
+        0  a  b  c  0   1
+        1  g  b  f  1   2
+        '''
+        if 'inplace' in kwargs:
+            inplace = kwargs['inplace']
+        else:
+            inplace = False
+        kwargs['inplace']=False
+
+        if index is not None:
+            rowIdx = cmm._query_index(self.mindex,index,**kwargs)
+        else:
+            rowIdx = slice(None)
+
+        if not inplace:
+            return self.iloc[rowIdx]
+        else:
+            self.__ss = self.__ss.iloc[rowIdx]
+            self.index = self.index.iloc[rowIdx]
+    
+
     def drop_duplicates(self,keep='first', inplace=False):
         '''
         Return MulSeries with duplicate values removed. 
@@ -865,7 +920,17 @@ class MulSeries:
             return MulSeries(new_ss.values,
                         index=self.index.loc[bidx_keep],
                         name=self.name)
-
+    
+    def sort_values(self,*args,**kwargs):
+        if self.pindex.is_unique:
+            return self.call('sort_values',*args,**kwargs)
+        else:
+            pindex = self.pindex
+            self.pindex = range(self.shape[0])
+            res = self.call('sort_values',*args,**kwargs)
+            res.pindex = pindex[res.pindex]
+            self.pindex = pindex
+            return res
 
 
 ops = ['add','sub','mul','div','truediv','floordiv','mod','pow','eq','le','lt','gt','ge','ne']

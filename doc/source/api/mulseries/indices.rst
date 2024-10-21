@@ -41,6 +41,7 @@ MulSeries
    copy
    equals
    reset_index
+   query
    drop_duplicates
    call
    groupby

@@ -9,4 +9,6 @@ advantages:
 8. mloc dict syntax allows the change of the order of flexible hierachical indexing
 9. Primary index enables boolean index: mf.loc[mf.mindex['col']>2]
 
+10. Interface with pandas, leveraging existing infrastructures of pandas.
+
 An alternative multi-index DataFrame for Python and Pandas

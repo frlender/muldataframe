@@ -48,7 +48,10 @@ def test_getattr():
     assert ms.shape == (2,)
 
     assert ms.mindex.equals(ms.index)
+    assert ms.midx.equals(ms.index)
     assert ms.mname.equals(ms.name)
+    assert ms.mname.name == ms.pname
+
 
     index = pd.DataFrame([['a','b'],['c','d'],
                           ['g','h']],
@@ -471,6 +474,26 @@ def test_drop_duplicates():
     assert eq(ms2.mindex.index,[0,1])
 
 
+def test_query():
+    index = pd.DataFrame([['a','b','c'],
+                        [ 'g','b','f'],
+                        [ 'b','g','h']],
+                        columns=['x','y','z'])
+    name = name = pd.Series(['a','b'],index=['e','f'],name='cc')
+    ms = MulSeries([1,2,3],index=index,name=name)
+    ms2 = ms.query('y == "b"')
+    assert ms2.shape == (2,)
+    assert eq(ms2.values,[1,2])
+    
+    ms2 = ms.copy()
+    ms2.query('y == "b"',inplace=True)
+    assert ms2.shape == (2,)
+    assert eq(ms2.values,[1,2])
+
+    ms2 = ms.query()
+    assert ms2 == ms
+
+
 def test_groupby():
     index = pd.DataFrame([['a','b','c'],
                         [ 'g','b','f'],
@@ -516,3 +539,27 @@ def test_groupby():
             return gp
     msa = ms.groupby('y').call(gpAdd,use_mul=True)
     assert eq(msa.values,[6,7,3])
+
+
+def test_sort_values():
+    import muldataframe as md
+    index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                        index=['a','b','b'],
+                        columns=['x','y'])
+    name = pd.Series([5,7],
+                            index=['f','g'],
+                            name='c')
+    ms = MulSeries([8,1,9],index=index,name=name)
+    
+    ms2 = ms.sort_values()
+    # print('\n',ms2)
+    assert eq(ms2.pindex,['b','a','b'])
+    assert eq(ms2.values.tolist(),[1,8,9])
+
+    index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                        index=['a','b','c'],
+                        columns=['x','y'])
+    ms.index = index
+    ms2 = ms.sort_values()
+    assert eq(ms2.pindex,['b','a','c'])
+    assert eq(ms2.values.tolist(),[1,8,9])

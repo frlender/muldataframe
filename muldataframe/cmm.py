@@ -1,7 +1,7 @@
 
 import pandas as pd
 from warnings import warn
-from typing import Literal, TypeVar, Generic
+from typing import Literal, TypeVar, Generic, Hashable
 # import muldataframe.MulSeries as MulSeries
 import muldataframe as md
 # import muldataframe.util as util
@@ -15,6 +15,8 @@ IndexInit = Literal['override'] | Literal['align']
 IndexAgg = Literal['same_only'] | Literal['list'] | Literal['tuple']
 
 OPS = ['add','sub','mul','div','truediv','floordiv','mod','pow']
+
+# symbol_key = '__@$&idx'
 
 def array_like(x):
     return isinstance(x,list) or isinstance(x,pd.Series) or isinstance(x,pd.Index) or isinstance(x,np.ndarray)
@@ -38,25 +40,86 @@ class Accessor:
     
 
 
-def _mloc_idx_each(nx,col_nx,idx):
-    if isinstance(col_nx,pd.Series):
-        col_nx_reverse = pd.Series(col_nx.index.values,
-                                   index=col_nx.values)
-        col_idx = col_nx_reverse.loc[idx]
-        return col_idx.values if isinstance(col_idx,pd.Series) \
-              else col_idx
-    else:
-        err_no_overlap = 'The input indices to the multi-index dataframe do not overlap.'
-        if isinstance(idx,list):
-            if col_nx in idx:
-                return nx
+# def _mloc_idx_each(nx,col_nx,idx):
+#     if isinstance(col_nx,pd.Series):
+#         col_nx_reverse = pd.Series(col_nx.index.values,
+#                                    index=col_nx.values)
+#         col_idx = col_nx_reverse.loc[idx]
+#         return col_idx.values if isinstance(col_idx,pd.Series) \
+#               else col_idx
+#     else:
+#         err_no_overlap = 'The input indices to the multi-index dataframe do not overlap.'
+#         if isinstance(idx,list):
+#             if col_nx in idx:
+#                 return nx
+#             else:
+#                 raise KeyError(err_no_overlap)
+#         else:
+#             if col_nx == idx:
+#                 return nx
+#             else:
+#                 raise KeyError(err_no_overlap)
+
+
+# def _mloc_idx_old(key,df):
+#     nx = list(range(df.shape[0]))
+#     if isinstance(key,list):
+#         if len(key) > df.shape[0]:
+#             raise IndexError(f'Too many indices. There should be at most {df.shape[0]} indices.')
+#         for i, idx in enumerate(key):
+#             if idx is not ...:
+#                 ss = df.iloc[:,i]
+#                 ss.index = list(range(df.shape[0]))
+#                 col_nx = ss.loc[nx]
+#                 nx = _mloc_idx_each(nx,col_nx,idx)
+#     else:
+#         for k, idx in key.items():
+#             colx = df.loc[:,k]
+#             if isinstance(colx, pd.DataFrame):
+#                 colx = colx.iloc[:,-1]
+#                 msg = f'There are more multiple {k} columns in index dataframe. Use only the last {k} column.'
+#                 warn(msg)
+#             colx.index = list(range(df.shape[0]))
+#             col_nx = colx.loc[nx]
+#             nx = _mloc_idx_each(nx,col_nx,idx)
+#     return nx
+
+
+def _sucessive_indexing(ss,idx_arr):
+    drop_level_count = 0
+    is_scalar = False
+    for i,idx_item in enumerate(idx_arr):
+        if idx_item == slice(None):
+            continue
+        if is_scalar:
+            if idx_item == slice(None):
+                continue
+            item = ss.index.get_level_values(i-drop_level_count)[0]
+            print(idx_item)
+            err_msg = 'The input indices to the multi-index dataframe do not overlap.'
+            if isinstance(idx_item,Hashable):
+                if item != idx_item:
+                    raise KeyError(err_msg)
             else:
-                raise KeyError(err_no_overlap)
+                if item not in idx_item:
+                    raise KeyError(err_msg)
         else:
-            if col_nx == idx:
-                return nx
-            else:
-                raise KeyError(err_no_overlap)
+            idx = [slice(None)]*(i-drop_level_count)+[idx_item]
+            level_count = len(ss.index.names)
+            ss = ss.loc[tuple(idx)]
+            if not isinstance(ss,pd.Series):
+                is_scalar = True
+                break
+            if ss.shape[0] == 1 and isinstance(idx_item,Hashable):
+                is_scalar = True
+            if len(ss.index.names) < level_count:
+                drop_level_count += 1
+    # print('=======',ss)
+    if is_scalar:
+        return ss.values[0] if isinstance(ss,pd.Series) else ss
+    else:
+        return ss.values
+
 
 
 def _mloc_idx(key,df):
@@ -64,33 +127,61 @@ def _mloc_idx(key,df):
     if isinstance(key,list):
         if len(key) > df.shape[0]:
             raise IndexError(f'Too many indices. There should be at most {df.shape[0]} indices.')
-        for i, idx in enumerate(key):
-            if idx is not ...:
-                ss = df.iloc[:,i]
-                ss.index = list(range(df.shape[0]))
-                col_nx = ss.loc[nx]
-                nx = _mloc_idx_each(nx,col_nx,idx)
+        idx_arr = [x if x is not ... else slice(None) for x in key]
+        ss = pd.Series(nx,index=pd.MultiIndex.from_frame(df),copy=False)
+        # if len(idx_arr) < df.shape[1]:
+        #     df2 = df.iloc[:,:len(idx_arr)]
+        # else:
+        #     df2 = df.copy()
     else:
-        for k, idx in key.items():
-            colx = df.loc[:,k]
-            if isinstance(colx, pd.DataFrame):
-                colx = colx.iloc[:,-1]
+        idx_arr = key.values()
+        sk = pd.Series(range(df.shape[1]),index=df.columns)
+        idx_num = []
+        for k in key.keys():
+            nk = sk[k]
+            if isinstance(nk,pd.Series):
+                nk = nk.iloc[-1]
                 msg = f'There are more multiple {k} columns in index dataframe. Use only the last {k} column.'
                 warn(msg)
-            colx.index = list(range(df.shape[0]))
-            col_nx = colx.loc[nx]
-            nx = _mloc_idx_each(nx,col_nx,idx)
-    return nx
+            idx_num.append(nk)
+        df2 = df.iloc[:,idx_num]
+        ss = pd.Series(nx,index=pd.MultiIndex.from_frame(df2),copy=False)
+    return _sucessive_indexing(ss,idx_arr)
+    
+    # if isinstance(ss2,pd.Series) and ss2.shape[0] == 1 and not hasattr(idx_arr[-1], "__len__"):
+    #     return ss2.values[0]
+    # else:
+    #     return ss2.values
+    
+    # ss2 = ss.loc[tuple(idx_arr)]
+    # return ss2.values
+
 
 
 def _nloc_idx(key:dict,df):
     nx = list(range(df.shape[0]))
-    for k, idx in key.items():
-        colx = df.iloc[:,k]
-        colx.index = list(range(df.shape[0]))
-        col_nx = colx.loc[nx]
-        nx = _mloc_idx_each(nx,col_nx,idx)
-    return nx
+    idx_arr = list(key.values())
+    sk = pd.Series(range(df.shape[1]),index=df.columns)
+    idx_num = sk[key.keys()]
+    df2 = df.iloc[:,idx_num]
+    ss = pd.Series(nx,index=pd.MultiIndex.from_frame(df2),copy=False)
+    return _sucessive_indexing(ss,idx_arr)
+    # ss2 = ss.loc[tuple(idx_arr)]
+    # print(ss2)
+    # if isinstance(ss2,pd.Series) and ss2.shape[0] == 1 and not hasattr(idx_arr[-1], "__len__"):
+    #     return ss2.values[0]
+    # else:
+    #     return ss2.values
+
+
+# def _nloc_idx_old(key:dict,df):
+#     nx = list(range(df.shape[0]))
+#     for k, idx in key.items():
+#         colx = df.iloc[:,k]
+#         colx.index = list(range(df.shape[0]))
+#         col_nx = colx.loc[nx]
+#         nx = _mloc_idx_each(nx,col_nx,idx)
+#     return nx
 
 
 # def _n2m_key(df,key:dict):
@@ -109,6 +200,14 @@ def _nloc_idx(key:dict,df):
 #     for k,v in key2.items():
 #         key3[k] = v
 #     return key3
+
+def _query_index(df,expr,**kwargs):
+    # col = '__@$&idx'
+    col = object() # unique key
+    df[col] = list(range(df.shape[0]))
+    df2 = df.query(expr,**kwargs)
+    del df[col]
+    return df2[col].tolist()
 
 def checkAlign(label,ss_shape,index_shape):
     if ss_shape > index_shape:

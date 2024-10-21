@@ -29,7 +29,7 @@ If ``index_init="override"``, the index of the index dataframe overrides the ind
                     index=['c','d'],
                     columns=['f','g'])
 >>> df = pd.DataFrame([[1,2],[8,9],[8,7]],index=['k','l','m'],columns=['t',5])
->>> mf = MulDataFrame(df, index=index,
+>>> mf = md.MulDataFrame(df, index=index,
     columns=columns, index_init='override',
     columns_init='override')
 >>> mf
@@ -48,7 +48,7 @@ Align mode
 If ``index_init="align"``, the index of the index dataframe is used to index the values dataframe constructed from the ``data`` argument. The resulting indexed values dataframe is used as the final values dataframe. It requires the index of the values dataframe to be uinque and contain all the labels of the index dataframe's index. If ``columns_init="align"``, the values dataframe is simiarly indexed on the columns dimension by the index of the columns dataframe.
 
 >>> df = pd.DataFrame([[1,2],[8,9]],index=['a','b'],columns=['d','c'])
->>> mf2 = MulDataFrame(df, index=index,
+>>> mf2 = md.MulDataFrame(df, index=index,
     columns=columns, index_init='align',
     columns_init='align')
 >>> mf2

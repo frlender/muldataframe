@@ -73,7 +73,7 @@ MulDataFrame uses ``.mloc`` to perform multi-indexing. Its indexer can be a list
 b  3  6  b  9
 b  5  6  b  7
 
-You can change the order of `hierarchical indexing <https://pandas.pydata.org/docs/user_guide/advanced.html>`_ by using a dict indexer. The example below will report an error if a list indexer is used, e.g. ``mf.mloc[[[3],[2,6]]]``. You can mixedly use a list for row indexing and a dict for column indexing and vice versa.
+MulDataFrame implements a new pattern of multi-indexing called :ref:`successive indexing <successive_indexing>` rather than `hierarchical indexing <https://pandas.pydata.org/docs/user_guide/advanced.html>`_. You can change the order of successive indexing by using a dict indexer. The example below will report an error if a list indexer is used, e.g. ``mf.mloc[[[3],[2,6]]]``. You can mixedly use the two types of indexers in a muldataframe with, for exmaple, a dict indexer for the rows and a list indexer for the columns.
 
 >>> mf.mloc[{'y':[2,6],'x':[3]}]
 (1, 2)    g  7  6

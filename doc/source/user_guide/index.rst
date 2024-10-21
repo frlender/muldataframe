@@ -15,3 +15,4 @@ User Guide
    numpy_functions.rst
    operators_and_compatibility.rst
    compatibility_with_pandas.rst
+   grouping.rst
