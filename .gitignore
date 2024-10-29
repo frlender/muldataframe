@@ -6,3 +6,4 @@ circular/
 **/__pycache__/
 .coverage
 doc/build
+dist/

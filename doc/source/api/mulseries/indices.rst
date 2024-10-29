@@ -42,6 +42,7 @@ MulSeries
    equals
    reset_index
    query
+   sort_values
    drop_duplicates
    call
    groupby

@@ -47,6 +47,7 @@ MulDataFrame
    reset_index
    query
    iterrows
+   sort_values
    drop_duplicates
    call
    groupby

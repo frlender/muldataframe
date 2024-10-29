@@ -922,6 +922,38 @@ class MulSeries:
                         name=self.name)
     
     def sort_values(self,*args,**kwargs):
+        '''
+        Sort by the values in the values Series.
+
+        The input parameters are exactly the same as `pandas.Series.sort_values <https://pandas.pydata.org/docs/reference/api/pandas.Series.sort_values.html>`_ method except the return value is a mulseries.
+
+        Parameters
+        ------------
+        Exactly the same as those in `pandas.Series.sort_values <https://pandas.pydata.org/docs/reference/api/pandas.Series.sort_values.html>`_.
+
+        Returns
+        ---------
+        MulSeries
+            A MulSeries object with the values series and the index dataframe sorted.
+
+        Examples
+        ---------
+        >>> index = pd.DataFrame([['a','b','c'],
+                                  ['g','b','f'],
+                                  ['b','g','h']],
+                        columns=['x','y','z'])
+        >>> name = pd.Series(['a','b'],index=['e','f'],name='cc')
+        >>> ms = MulSeries([1,2,3],index=index,name=name)
+        >>> ms.sort_values(ascending=False)
+        (3,)        f   b
+                    e   a
+                       cc
+        ----------  ------
+           x  y  z     cc
+        2  b  g  h  2   3
+        1  g  b  f  1   2
+        0  a  b  c  0   1
+        '''
         if self.pindex.is_unique:
             return self.call('sort_values',*args,**kwargs)
         else:

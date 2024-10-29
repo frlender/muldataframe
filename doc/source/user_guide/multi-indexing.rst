@@ -49,7 +49,7 @@ b  3  6   b  8  9
    x  y      c  d
 b  3  6   b  8  9
 
-So a multi-indexing operation on a muldataframe is the same as successively applying the indexer of each level to the muldataframe. It adheres to the idea that a multi-index is just a collection of single indexes. Hierarchical indexing in pandas, on the other hand, is more like selecting the intersection of different levels' indexers. Their difference is illustrated by the following example:
+So a multi-indexing operation on a muldataframe is the same as successively applying the indexer in each column of the index data frame to the muldataframe. It adheres to the idea that a multi-index is just a collection of single indexes. Hierarchical indexing in pandas, on the other hand, is more like selecting the intersection of the different levels' indexers. Their difference is illustrated by the following example:
 
 >>> mf.mloc[[[3], [2,6]]]
 Error

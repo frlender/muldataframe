@@ -357,7 +357,7 @@ class MulDataFrame:
                 self.index.equals(other.index) and \
                 self.columns.equals(other.columns)
 
-    def copy(self,data_copy=False):
+    def copy(self,data_copy=True):
         '''
         Create a deep copy of MulDataFrame.
 
@@ -1474,7 +1474,45 @@ class MulDataFrame:
             return mf
 
     def sort_values(self,*args,**kwargs):
-        # by = args[0]
+        '''
+        Sort by the values in the values data frame along either axis.
+
+        The input parameters are mostly the same as `pandas.DataFrame.sort_values <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.sort_values.html>`_ method except the return value is a muldataframe.
+
+        Parameters
+        ------------
+        by : str or list of str
+            Name or list of names to sort by.
+
+            - if axis is 0 or ``‘index’`` then by may contain column labels of the values data frame.
+            - if axis is 1 or ``‘columns’`` then by may  contain index labels of the values data frame.
+
+        Other parameters are exactly the same as those in `pandas.DataFrame.sort_values <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.sort_values.html>`_.
+
+        Returns
+        ---------
+        MulDataFrame
+            A MulDataFrame object with the values data frame and the index (``axis=0``) or columns (``axis=1``) dataframe sorted.
+
+        Examples
+        ---------
+        >>> index = pd.DataFrame([[1,2],[3,6],[5,6]],
+                     index=['a','b','b'],
+                     columns=['x','y'])
+        >>> columns = pd.DataFrame([[5,7],[3,6]],
+                    index=['c','d'],
+                    columns=['f','g'])
+        >>> mf = MulDataFrame([[1,2],[8,9],[8,7]],index=index,columns=columns)
+        >>> mf.sort_values('d')
+        (3, 2)    g  7  6
+                  f  5  3
+                     c  d
+        --------  ---------
+           x  y      c  d
+        a  1  2   a  1  2
+        b  5  6   b  8  7
+        b  3  6   b  8  9
+        '''
         if 'axis' in kwargs:
             axis = kwargs['axis']
         else:

@@ -7,6 +7,8 @@ import muldataframe as md
 # import muldataframe.util as util
 import numpy as np
 import inspect
+import warnings
+
 # MulSeries = MulSeriesModule.MulSeries
 
 IndexType = Literal['index'] | Literal['columns']
@@ -106,7 +108,9 @@ def _sucessive_indexing(ss,idx_arr):
         else:
             idx = [slice(None)]*(i-drop_level_count)+[idx_item]
             level_count = len(ss.index.names)
-            ss = ss.loc[tuple(idx)]
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                ss = ss.loc[tuple(idx)]
             if not isinstance(ss,pd.Series):
                 is_scalar = True
                 break
@@ -161,9 +165,7 @@ def _mloc_idx(key,df):
 def _nloc_idx(key:dict,df):
     nx = list(range(df.shape[0]))
     idx_arr = list(key.values())
-    sk = pd.Series(range(df.shape[1]),index=df.columns)
-    idx_num = sk[key.keys()]
-    df2 = df.iloc[:,idx_num]
+    df2 = df.iloc[:,list(key.keys())]
     ss = pd.Series(nx,index=pd.MultiIndex.from_frame(df2),copy=False)
     return _sucessive_indexing(ss,idx_arr)
     # ss2 = ss.loc[tuple(idx_arr)]
