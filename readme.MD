@@ -1,9 +1,9 @@
-# MulDataFrame
+# <img src="doc/source/_static/android-chrome-192x192.png" alt="logo" style="width:38px; display:inline;vertical-align:-9px"/> MulDataFrame
 ### Towards a more intuitive multi-index DataFrame
 
 *"A multi-index is just a DataFrame, period."*
 
-![alt text](doc/source/_static/figure.png)
+![Architecture](doc/source/_static/figure.png)
 
 Have you found the multi-index in pandas difficult to use? With unexpected behaviors? Do you want to get rid of the long and hard-to-remember methods and objects like get_level_values() and pd.IndexSlicer? Have you wondered why a multi-index is so similar to a dataframe but is not one? Have you been confused with the difference between levels and columns?
 
