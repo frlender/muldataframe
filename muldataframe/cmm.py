@@ -97,7 +97,7 @@ def _sucessive_indexing(ss,idx_arr):
             if idx_item == slice(None):
                 continue
             item = ss.index.get_level_values(i-drop_level_count)[0]
-            print(idx_item)
+            # print(idx_item)
             err_msg = 'The input indices to the multi-index dataframe do not overlap.'
             if isinstance(idx_item,Hashable):
                 if item != idx_item:
@@ -124,7 +124,30 @@ def _sucessive_indexing(ss,idx_arr):
     else:
         return ss.values
 
-
+# def _mloc_idx2(key,df):
+#     original_cols = df.columns
+#     df.columns = list(range(df.shape[1]))
+#     num_col = object()
+#     df[num_col] = list(range(df.shape[0]))
+#     original_idx = df.index
+#     first = True
+#     for i, idx in enumerate(key):
+#         # print(i,idx)
+#         if idx is ... or idx == slice(None):
+#             continue
+#         if first:
+#             df.set_index(i,drop=False,inplace=True)
+#             df2 = df
+#             # print(df)
+#             # print(df2)
+#             first = False
+#         else:
+#             df2.set_index(i,inplace=True)
+#         df2 = df2.loc[idx]
+#     del df[num_col]
+#     df.columns = original_cols
+#     df.index = original_idx
+#     return df2[num_col].values
 
 def _mloc_idx(key,df):
     nx = list(range(df.shape[0]))

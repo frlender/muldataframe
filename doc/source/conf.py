@@ -12,8 +12,8 @@ fld = pathlib.Path(__file__).parents[2].resolve().as_posix()
 sys.path.insert(0,fld)
 
 project = 'MulDataFrame'
-copyright = '2024, Qiaonan Duan'
-author = 'Qiaonan Duan'
+copyright = '2024, Qiaonan Duan and Fei Wang'
+author = 'Qiaonan Duan, Fei Wang'
 release = '0.1.0'
 
 # -- General configuration ---------------------------------------------------
@@ -22,7 +22,8 @@ release = '0.1.0'
 extensions = [
     'myst_parser',
     'sphinx.ext.autodoc',
-    'sphinx.ext.autosummary'
+    'sphinx.ext.autosummary',
+    'sphinx_favicon'
 ]
 
 templates_path = ['_templates']
@@ -33,5 +34,12 @@ exclude_patterns = []
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
+html_title = '<img style="width:50px; margin-right:0.5em" src="_static/android-chrome-192x192.png">MulDataFrame'
 html_theme = 'pydata_sphinx_theme'
 html_static_path = ['_static']
+
+favicons = [
+    "favicon-16x16.png",
+    "favicon-32x32.png",
+    "favicon.ico",
+]

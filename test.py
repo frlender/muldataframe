@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 # from muldataframe import MulSeries
 
+print(md.__path__)
+
 def get_data():
     index = pd.DataFrame([[1,2],[3,6],[5,6]],
                      index=['a','b','b'],
@@ -15,8 +17,22 @@ def get_data():
     return mf,index,columns
 
 mf,index,columns = get_data()
-mf.index.iloc[2] = [3,6]
-print('\n',mf.groupby(['x','y']).mean())
+
+
+mf2 = mf.iloc[:2]
+mf2.pcols = ['a','b']
+print(mf2,'\n')
+
+def sum(df,axis=0):
+    return df.sum(axis=axis)
+
+print(mf2.call(sum),'\n')
+print(mf2.call(sum,axis=1),'\n')
+
+# mf,index,columns = get_data()
+# print(mf.mloc[[[3],[6]]])
+# mf.index.iloc[2] = [3,6]
+# print('\n',mf.groupby(['x','y']).mean())
 
 
 # df = mf.df
@@ -25,12 +41,12 @@ print('\n',mf.groupby(['x','y']).mean())
 # ix = pd.IndexSlice
 # print(df.loc[ix[[3],[2,6]],:])
 # mf.mloc[[[3], [2,6]]]
-print('\n',mf)
-print(mf.call('min'))
-print(mf.min())
-print(mf.call(np.min))
-# md2 = mf.mloc[[3,6]]
-print('\n',mf.groupby(['x','y']).mean())
+# print('\n',mf)
+# print(mf.call('min'))
+# print(mf.min())
+# print(mf.call(np.min))
+# # md2 = mf.mloc[[3,6]]
+# print('\n',mf.groupby(['x','y']).mean())
 
 # mf,index,columns = get_data()
 # columns = pd.DataFrame([[5,7],[3,6]],

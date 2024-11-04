@@ -999,7 +999,7 @@ class MulDataFrame:
             params = inspect.signature(func).parameters
             if 'axis' in params:
                 axis = params['axis'].default
-                print(axis)
+                # print(axis)
                 if axis == 0 or axis == 'index':
                     return 0
                 elif axis == 1 or axis == 'columns':
