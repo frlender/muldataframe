@@ -1,4 +1,4 @@
-# <img src="doc/source/_static/android-chrome-192x192.png" alt="logo" align='top' style="width: 50px;max-width: 100%"/> MulDataFrame
+# <img src="doc/source/_static/android-chrome-192x192.png" alt="logo" align='top' style="width: 50px;max-width: 100%"/> <sub>MulDataFrame</sub>
 ### Towards a more intuitive multi-index DataFrame
 
 *"A multi-index is just a DataFrame, period."*
