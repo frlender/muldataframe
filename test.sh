@@ -1,1 +1,1 @@
-pytest --cov=muldataframe --cov-config=.coveragerc  --cov-report term-missing
+pytest --cov=muldataframe --cov-report term-missing

@@ -1,6 +1,13 @@
 Installation
 ===============
 
+Install from pypi:
+
+.. code-block:: shell
+
+    pip install muldataframe
+
+
 Install the latest dev version:
 
 .. code-block:: shell
