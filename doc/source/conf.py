@@ -38,6 +38,9 @@ html_title = '<img style="width:50px; margin-right:0.5em" src="_static/android-c
 html_theme = 'pydata_sphinx_theme'
 html_static_path = ['_static']
 
+# uncomment this line to generate documentation for local browsing.
+html_baseurl = '/muldataframe-doc/'
+
 favicons = [
     "favicon-16x16.png",
     "favicon-32x32.png",
