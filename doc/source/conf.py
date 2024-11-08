@@ -39,8 +39,14 @@ html_title = '<img style="width:50px; margin-right:0.5em" src="https://frlender.
 html_theme = 'pydata_sphinx_theme'
 html_static_path = ['_static']
 
+# favicons = [
+#     "favicon-16x16.png",
+#     "favicon-32x32.png",
+#     "favicon.ico",
+# ]
+
 favicons = [
-    "favicon-16x16.png",
-    "favicon-32x32.png",
-    "favicon.ico",
+    # "https://frlender.github.io/muldataframe-doc/_static/favicon-16x16.png",
+    # "https://frlender.github.io/muldataframe-doc/_static/favicon-32x32.png",
+    "https://frlender.github.io/muldataframe-doc/_static/favicon.ico?",
 ]
