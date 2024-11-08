@@ -14,7 +14,7 @@ If you answered yes to any of these questions, then MulDataFrame is right for yo
 pip install muldataframe
 ```
 
-### [Documentation]()
+### [Documentation](https://frlender.github.io/muldataframe-doc)
 ### Introduction
 
 A MulDataFrame object consists of three pandas data frames: an index data frame, a columns data frame and a values data frame. They are accessed through the `.index`, `.columns` and `.df` attributes of the muldataframe. The index of the index data frame and the index of the columns data frame are guaranteed to be the same as the index and the columns of the values data frame. I'll call them the primary index and the primary columns.
@@ -74,7 +74,7 @@ MulDataFrame uses `.mloc` to perform multi-indexing. Its input can be a list or 
 b  3  6  b  9
 b  5  6  b  7
 ```
-MulDataFrame implements a new pattern of multi-indexing called [successive indexing](???) rather than [hierarchical indexing](https://pandas.pydata.org/docs/user_guide/advanced.html). You can change the order of successive indexing using a dict indexer.
+MulDataFrame implements a new pattern of multi-indexing called [successive indexing](https://frlender.github.io/muldataframe-doc/user_guide/multi-indexing.html#mloc) rather than [hierarchical indexing](https://pandas.pydata.org/docs/user_guide/advanced.html). You can change the order of successive indexing using a dict indexer.
 ```python
 >>> mf.mloc[{'y':[2,6],'x':[3]}]
 (1, 2)    g  7  6
