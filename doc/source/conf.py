@@ -23,7 +23,8 @@ extensions = [
     'myst_parser',
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
-    'sphinx_favicon'
+    'sphinx_favicon',
+    # 'sphinx_sitemap'
 ]
 
 templates_path = ['_templates']
@@ -34,12 +35,9 @@ exclude_patterns = []
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_title = '<img style="width:50px; margin-right:0.5em" src="_static/android-chrome-192x192.png">MulDataFrame'
+html_title = '<img style="width:50px; margin-right:0.5em" src="https://frlender.github.io/muldataframe-doc/_static/android-chrome-192x192.png">MulDataFrame'
 html_theme = 'pydata_sphinx_theme'
 html_static_path = ['_static']
-
-# uncomment this line to generate documentation for local browsing.
-html_baseurl = '/muldataframe-doc/'
 
 favicons = [
     "favicon-16x16.png",
