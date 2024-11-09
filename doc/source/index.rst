@@ -6,7 +6,7 @@
 MulDataFrame documentation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-   "A multi-index is just a DataFrame, period."
+   "A multi-index is just a data frame, period."
 
 .. image:: _static/figure.png
   :width: 700
