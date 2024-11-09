@@ -34,20 +34,22 @@ As the column selection is a scalar selection, the return value is a mulseries r
 The reason successive indexing is named as such is illustrated by the following example:
 
 >>> mf.mloc[[[1,3], 6]]
-(3, 2)    g  7  6
-          f  5  3
-             c  d
---------  ---------
-   x  y      c  d
-b  3  6   b  8  9
+(2,)     y  6
+         x  3
+            b
+-------  ------
+   f  g     b
+c  5  7  c  8
+d  3  6  d  9 
 >>> mf2 = mf.mloc[[[1,3]]]
 >>> mf2.mloc[[..., 6]]
-(3, 2)    g  7  6
-          f  5  3
-             c  d
---------  ---------
-   x  y      c  d
-b  3  6   b  8  9
+(2,)     y  6
+         x  3
+            b
+-------  ------
+   f  g     b
+c  5  7  c  8
+d  3  6  d  9
 
 So a multi-indexing operation on a muldataframe is the same as successively applying the indexer in each column of the index data frame to the muldataframe. It adheres to the idea that a multi-index is just a collection of single indexes. Hierarchical indexing in pandas, on the other hand, is more like selecting the intersection of the different levels' indexers. Their difference is illustrated by the following example:
 
