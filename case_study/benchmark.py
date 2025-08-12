@@ -7,10 +7,6 @@ import argparse
 
 MulDataFrame = md.MulDataFrame
 
-data_path = os.path.join('.','data')
-if not os.path.exists(data_path):
-    os.mkdir(data_path)
-
 parser = argparse.ArgumentParser()
 parser.add_argument("-b", "--both", action="store_true", help="run both 1e6 and 1e7 examples. Otherwise, only 1e6 is run.")
 args = parser.parse_args()
@@ -59,13 +55,6 @@ for rlen in nums:
         t1 = time.time()
         xf.loc[rlen,'pandas'] += t1-t0
 
-        df3 = df2.reset_index()
-        df3.columns = [str(x) for x in df3.columns]
-        dirPath = os.path.join('.','data',str(rlen))
-        if not os.path.exists(dirPath):
-            os.mkdir(dirPath)
-        ftPath = os.path.join(dirPath,f'{i+1}.ft')
-        df3.to_feather(ftPath)
     
 print(xf/iter_count)
 # print(xf['muldataframe']/xf['pandas_build_idx'])
