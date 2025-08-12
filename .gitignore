@@ -8,3 +8,4 @@ doc/build
 dist/
 data/
 doc/build_custom.sh
+*checkpoints
