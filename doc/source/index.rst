@@ -31,7 +31,7 @@ A MulDataFrame object consists of three pandas dataframes that are accessed thro
 >>> columns = pd.DataFrame([[5,7],[3,6]],
                     index=['c','d'],
                     columns=['f','g'])
->>> mf = MulDataFrame([[1,2],[8,9],[8,7]],
+>>> mf = md.MulDataFrame([[1,2],[8,9],[8,7]],
     index=index,columns=columns)
 >>> mf
 (3, 2)    g  7  6
