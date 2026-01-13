@@ -25,15 +25,15 @@ class MulSeries:
         If index is None, construct an empty index dataframe using the index of the values series as its index.
     name: pandas.Series, str
         If name is of str type, construct an empty name series using name as its name. If name is None, construct an empty name series using the name of the values series as its name.
-    index_init: Literal['override'] | Literal['align']
+    index_init: Literal['overlap'] | Literal['override'] | Literal['align']
         The option determins how to align the index of the index dataframe to the index of the values series. 
         
+        - 'overlap' : The overlap of the index of the index dataframe and the index of the values series is used to index the values series and the index dataframe. This mode requires both indexes being unique. 
         - 'override' : the index of the index dataframe overrides the index of the values series. This mode requires both indexes' lengths to be the same. 
         - 'align' : This mode is only effective if the data argumnet implies an index and the index argument is not None. In this mode, the index of the index dataframe is used to index the values series constructed from the data argument. The resulting series is used as the final values series. It requires the index of the values series being uinque and have all the labels in the index dataframe's index. 
-        - 'overlap' : The overlap of the index of the index dataframe and the index of the values series is used to index the values series and the index dataframe. This mode requires both indexes being unique. 
-        - 'None' : the default behavior depends on the type of the ``data`` argument. If ``data`` is a ``pandas.Series`` or a dict, the mode will be ``'overlap```. Otherwise, it will be ``'override'``.
+        - None : the default behavior depends on the type of the ``data`` argument. If ``data`` implies a row index such as if it is a ``pandas.Series`` object or a dict, the mode will be ``'overlap```. Otherwise, it will be ``'override'``.
         
-        Of note, when the data arugment is a series or a dict with its index being the same as the index of the index dataframe, neither of the 'align' or 'overlap' mode will be used even if they are specified. As a result, both indexes can have duplicate values.
+        Of note, when ``data`` implies a row index and this index is the same as the index of the index dataframe,  the ``'override'`` mode will be used even if other modes are specified. In all three modes, the name of the initialized primary index will be the same as the name of the index of the index dataframe.
     index_copy: bool
         whether to create a copy of the index argument.
     name_copy: bool

@@ -399,8 +399,9 @@ def test_mloc_nloc():
     md2 = md.mloc[[[1,3],[6]]]
     assert eq(md2.values,[[8,9]])
 
-    md2 = md.mloc[[3,6]]
-    assert eq(md2.values,[8,9])
+    with pytest.raises(KeyError):
+        md2 = md.mloc[[3,6]]
+    # assert eq(md2.values,[8,9])
 
     with pytest.raises(KeyError):
         md.mloc[[1,6]]

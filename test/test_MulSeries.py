@@ -260,7 +260,8 @@ def test_mloc_nloc_get():
     # print('\n',ms.mloc[[None,'b']])
     assert eq(ms.mloc[[..., ..., ['h','f']]].values,[3,2])
 
-    assert ms.mloc[['g', ..., ['h','f']]] == 2
+    with pytest.raises(KeyError):
+        assert ms.mloc[['g', ..., ['h','f']]] == 2
 
     with pytest.raises(KeyError):
         ms.mloc[['a', ..., ['h','f']]]

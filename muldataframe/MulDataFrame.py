@@ -30,25 +30,25 @@ class MulDataFrame:
         If index is None, construct an empty index dataframe using the index of the values dataframe as its index.
     columns : pandas.DataFrame
         If columns is None, construct an empty columns dataframe using the columns of the values dataframe as its index.
-    index_init : Literal['override'] | Literal['align']
+    index_init : Literal['overlap'] | Literal['override'] | Literal['align']
         The option determins how to align the index of the index dataframe to the index of the values dataframe. 
         
-        - 'override' : the index of the index dataframe overrides the index of the values dataframe. This mode requires both indexes' lengths to be the same. 
-        - 'align' : the index of the index dataframe is used to index the values dataframe constructed from the data argument. The resulting indexed values dataframe is used as the final values dataframe. It requires the index of the values dataframe being uinque and the include all the values in the index dataframe's index. 
         - 'overlap' : the overlap of the index of the index dataframe and the index of the values dataframe is used to index the values and the index dataframes. This mode requires both indexes being unique. 
-        - None : the default behavior depends on the type of the ``data`` argument. If ``data`` is a ``pandas.DataFrame`` or a ``pandas.Series`` object, the mode will be ``'overlap```. Otherwise, it will be ``'override'``.
+        - 'override' : the index of the index dataframe overrides the index of the values dataframe. This mode requires both indexes' lengths to be the same. 
+        - 'align' : the index of the index dataframe is used to index the values dataframe constructed from the data argument. The resulting indexed values dataframe is used as the final values dataframe. It requires the index of the values dataframe being uinque and include all the values in the index dataframe's index. 
+        - None : the default behavior depends on the type of the ``data`` argument. If ``data`` implies a row index such as if it is a ``pandas.DataFrame`` or a ``pandas.Series`` object, the mode will be ``'overlap```. Otherwise, it will be ``'override'``.
         
-        Of note, when the data arugment is a dataframe or a series with its index being the same as the index of the index dataframe, neither of the 'align' or 'overlap' mode will be used even if they are specified. As a result, both indexes can have duplicate values.
-    columns_init : Literal['override'] | Literal['align']
+        Of note, when ``data`` implies a row index and this index is the same as the index of the index dataframe,  the ``'override'`` mode will be used even if other modes are specified. In all three modes, the name of the initialized primary index will be the same as the name of the index of the index dataframe.
+    columns_init : Literal['overlap'] | Literal['override'] | Literal['align']
         The option determins how to align the index of the columns dataframe to the columns of the values dataframe. 
         
+         - 'overlap' : the overlap of the index of the index dataframe and the index of the values dataframe is used to index the values and the index dataframes. This mode requires both indexes being unique. 
         - 'override' : the index of the columns dataframe overrides the columns of the values dataframe. This mode requires both indexes' lengths to be the same. 
-        - 'align' : the index of the columns dataframe is used to index the columns of the values dataframe constructed from the data argument. The resulting indexed values dataframe is used as the final values dataframe. It requires the columns of the values dataframe being uinque and the labels of the columns dataframe's index exist in the columns of the values dataframe. 
-        - 'overlap' : the overlap of the index of the index dataframe and the index of the values dataframe is used to index the values and the index dataframes. This mode requires both indexes being unique. 
-        - None : the default behavior depends on the type of the ``data`` argument. If ``data`` is a ``pandas.DataFrame``, a dict of list-like objects or a list of dict objects, the mode will be ``'overlap```. Otherwise, it will be ``'override'``.
+        - 'align' : the index of the columns dataframe is used to index the columns of the values dataframe constructed from the data argument. The resulting indexed values dataframe is used as the final values dataframe. It requires the columns of the values dataframe being unique and the labels of the columns dataframe's index exist in the columns of the values dataframe. 
+        - None : the default behavior depends on the type of the ``data`` argument. If ``data`` implies a column index such as if it is a ``pandas.DataFrame``, a dict of list-like objects or a list of dict objects, the mode will be ``'overlap```. Otherwise, it will be ``'override'``.
         
-        Of note, when the data arugment is a dataframe with its columns being the same as the index of the columns dataframe, neither of the 'align' or 'overlap' modes will be used even if they are specified. As a result, both indexes can have duplicate values.
-    both_init : Literal['override'] | Literal['align']
+        Of note, when ``data`` implies a columns index and this index is the same as the index of the columns dataframe,  the ``'override'`` mode will be used even if other modes are specified. In all three modes, the name of the initialized primary columns will be the same as the name of the index of the columns dataframe.
+    both_init : Literal['overlap'] | Literal['override'] | Literal['align']
         It overrides index_init and columns_init with the same value.
     index_copy : bool
         whether to create a copy of the index argument.
@@ -83,7 +83,8 @@ class MulDataFrame:
     b  5  6   b  8  10
     '''
     __pandas_priority__ = 10000
-    def __init__(self, data, index=None, columns=None,
+    def __init__(self, data, index:pd.DataFrame=None, 
+        columns:pd.DataFrame=None,
         index_init:cmm.IndexInit=None, 
         columns_init:cmm.IndexInit=None,
         both_init:cmm.IndexInit=None,

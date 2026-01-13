@@ -13,7 +13,7 @@ import warnings
 
 IndexType = Literal['index'] | Literal['columns']
 MIndexType = Literal['mindex'] | Literal['mcolumns']
-IndexInit = Literal['override'] | Literal['align']
+IndexInit = Literal['overlap'] | Literal['override'] | Literal['align']
 IndexAgg = Literal['same_only'] | Literal['list'] | Literal['tuple']
 
 OPS = ['add','sub','mul','div','truediv','floordiv','mod','pow']
@@ -94,17 +94,20 @@ def _sucessive_indexing(ss,idx_arr):
         if idx_item == slice(None):
             continue
         if is_scalar:
-            if idx_item == slice(None):
-                continue
-            item = ss.index.get_level_values(i-drop_level_count)[0]
-            # print(idx_item)
-            err_msg = 'The input indices to the multi-index dataframe do not overlap.'
-            if isinstance(idx_item,Hashable):
-                if item != idx_item:
-                    raise KeyError(err_msg)
-            else:
-                if item not in idx_item:
-                    raise KeyError(err_msg)
+            #raise error is there are idx_items after scalar selection
+            # After scalar selection, there should not be any other idx_items
+            raise KeyError(f'There can be no multiple-index selection after scalar selection.')
+            # if idx_item == slice(None):
+            #     continue
+            # item = ss.index.get_level_values(i-drop_level_count)[0]
+            # # print(idx_item)
+            # err_msg = 'The input indices to the multi-index dataframe do not overlap.'
+            # if isinstance(idx_item,Hashable):
+            #     if item != idx_item:
+            #         raise KeyError(err_msg)
+            # else:
+            #     if item not in idx_item:
+            #         raise KeyError(err_msg)
         else:
             idx = [slice(None)]*(i-drop_level_count)+[idx_item]
             level_count = len(ss.index.names)
