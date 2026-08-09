@@ -1,6 +1,6 @@
 <!-- # <img src="doc/source/_static/header.png" alt="logo" align='middle' style="width: 300px;max-width: 100%"/> -->
 # MulDataFrame
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/frlender/muldataframe/blob/main/case_study/PRAD.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/frlender/muldataframe/blob/main/case_study/example_code.ipynb)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/frlender/muldataframe/HEAD?labpath=case_study/PRAD.ipynb)
 ### Towards a more intuitive multi-index data frame
 
@@ -29,7 +29,7 @@ A MulDataFrame object consists of three pandas data frames: an index data frame,
 >>> columns = pd.DataFrame([[5,7],[3,6]],
                     index=['c','d'],
                     columns=['f','g'])
->>> mf = MulDataFrame([[1,2],[8,9],[8,7]],
+>>> mf = md.MulDataFrame([[1,2],[8,9],[8,7]],
     index=index,columns=columns)
 >>> mf
 (3, 2)    g  7  6
