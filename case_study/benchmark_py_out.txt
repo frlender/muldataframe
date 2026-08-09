@@ -1,25 +1,26 @@
-Row length:1000000
-10
-20
-30
-40
-50
-60
-70
-80
-90
-100
 Row length:10000000
+Peak memory: 228.91 MB
+Peak memory: 419.62 MB
+Peak memory: 228.89 MB
+Peak memory: 419.62 MB
+Peak memory: 228.89 MB
+Peak memory: 419.62 MB
+Peak memory: 228.89 MB
+Peak memory: 419.62 MB
+Peak memory: 228.89 MB
+Peak memory: 419.62 MB
+Peak memory: 228.89 MB
+Peak memory: 419.62 MB
+Peak memory: 228.89 MB
+Peak memory: 419.62 MB
+Peak memory: 228.89 MB
+Peak memory: 419.62 MB
+Peak memory: 228.89 MB
+Peak memory: 419.62 MB
 10
-20
-30
-40
-50
-60
-70
-80
-90
-100
-          muldataframe    pandas  pandas_build_idx
-1000000       0.371260  0.000329          0.143181
-10000000      3.879039  0.000353          1.666547
+Peak memory: 228.89 MB
+Peak memory: 419.62 MB
+(10000000, 'muldataframe', 'multi-indexing') 6.706935000419617 0.7614299805003527
+(10000000, 'muldataframe', 'metadata editting') 0.00026311874389648435 7.42830400655817e-05
+(10000000, 'pandas_build_idx', 'multi-indexing') 2.609467887878418 0.2273634285213921
+(10000000, 'pandas_build_idx', 'metadata editting') 3.282398533821106 0.41183436709636106
