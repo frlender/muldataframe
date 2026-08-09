@@ -10,7 +10,7 @@ authors = [
   { name="Qiaonan Duan", email="geonann@gmail.com" },
 ]
 description = "Towards a more intuitive multi-index DataFrame"
-readme = "README.md"
+readme = "readme.MD"
 requires-python = ">=3.11"
 classifiers = [
     "Programming Language :: Python :: 3",
