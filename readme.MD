@@ -1,7 +1,7 @@
 <!-- # <img src="doc/source/_static/header.png" alt="logo" align='middle' style="width: 300px;max-width: 100%"/> -->
 # MulDataFrame
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/frlender/muldataframe/blob/main/case_study/PRAD.ipynb)
-[![Binder](https://mybinder.org/badge_logo.svg)](https://colab.research.google.com/github/frlender/muldataframe/blob/main/case_study/PRAD.ipynb)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/frlender/muldataframe/blob/main/case_study/PRAD.ipynb)
 ### Towards a more intuitive multi-index data frame
 
 *"A multi-index is just a data frame, period."*
