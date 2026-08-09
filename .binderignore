@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Git
+.git/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large data files
+*.h5
+*.hdf5
+*.csv.gz
+*.tar.gz
+
+# Docs (not needed for running notebooks)
+docs/_build/
+
+# Tests (not needed for demo)
+tests/
