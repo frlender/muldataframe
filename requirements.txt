@@ -1,2 +1,2 @@
-muldataframe=0.1.3
-kaplanmeier=0.2.0
+muldataframe==0.1.3
+kaplanmeier==0.2.0
