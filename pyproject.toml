@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "muldataframe"
-version = "0.1.0"
+version = "0.1.5"
 authors = [
   { name="Qiaonan Duan", email="geonann@gmail.com" },
 ]
@@ -26,3 +26,10 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/frlender/muldataframe"
 Issues = "https://github.com/frlender/muldataframe/issues"
+
+[tool.hatch.build.targets.wheel]
+exclude = [
+    "case_study/",
+    "test/",
+    "doc/",
+]
