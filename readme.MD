@@ -86,7 +86,7 @@ MulDataFrame implements a new pattern of multi-indexing called [successive index
    x  y      c  d
 b  3  6   b  8  9
 ```
-In the above example, the muldataframe is first indexed by the `y` column of the index data frame and then the `x` column. With a list as input you cannot achieve this. In fact, `mf.mloc[[[3],[2,6]]]` reports an error. 
+In the above example, the muldataframe is first indexed by the `y` column and then the `x` column of the index data frame. With a list as input you cannot achieve this. In fact, `mf.mloc[[[3],[2,6]]]` reports an error. 
 
 `mf.mindex` and `mf.mcolumns`/`mf.mcols` are implemented as alias for `mf.index` and `mf.columns` to help distinguish between a multi-index and a regular index. `mf.pindex` and `mf.pcolumns`/`md.pcols` are implemented as shorthands for `mf.primary_index` and `mf.primary_columns`. We'll use these alias in the following examples.
 
